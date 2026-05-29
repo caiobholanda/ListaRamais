@@ -7,7 +7,7 @@ Diretório de ramais do Hotel Gran Marquise.
 - **Stack:** Static site (HTML/CSS/JS ou React Babel standalone) + nginx
 - **Deploy:** Fly.io via GitHub Actions
 - **Site em produção:** https://diretorio-ramais-granmarquise.fly.dev
-- **Repositório:** https://github.com/caiobholanda/DiretorioRamais
+- **Repositório:** https://github.com/caiobholanda/ListaRamais
 
 ## Estrutura
 

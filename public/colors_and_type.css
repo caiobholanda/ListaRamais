@@ -1,0 +1,126 @@
+/* ============================================================
+   HOTEL GRAN MARQUISE — Design Tokens (Editorial identity)
+   ============================================================ */
+
+:root {
+  --paper:        #F4EEE1;
+  --ink:          #1C2030;
+  --gold-l:       #8A6B1F;
+  --olive:        #605738;
+  --olive-soft:   #44402F;
+  --teal-l:       #15705A;
+
+  --midnight:     #0A0E1A;
+  --cream:        #F5F0E6;
+  --gold-d:       #C9A961;
+  --taupe:        #8A7E64;
+  --gold-mist:    #D4C4A0;
+  --teal-d:       #3E8497;
+
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-body:    "Fraunces", Georgia, serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --fs-display:  clamp(2rem, 4vw, 3rem);
+  --fs-h1: clamp(1.7rem, 3vw, 2.25rem);
+  --fs-h2: clamp(1.5rem, 2.6vw, 2rem);
+  --fs-h3: 1.1rem;
+  --fs-body: 1rem;
+  --fs-sm: 0.9rem;
+  --fs-label: 0.72rem;
+  --fs-xs: 0.68rem;
+  --fs-ext: clamp(1.9rem, 3.4vw, 2.5rem);
+
+  --lh-tight: 1.08;
+  --lh-snug: 1.25;
+  --lh-body: 1.6;
+
+  --track-label: 0.15em;
+  --track-wide: 0.06em;
+  --track-display: 0;
+
+  --fw-light: 300;
+  --fw-reg: 400;
+  --fw-med: 500;
+  --fw-semi: 600;
+
+  --r-sm: 3px;
+  --r-md: 6px;
+  --r-lg: 10px;
+  --r-pill: 999px;
+
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px; --sp-9: 96px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-fast: 140ms;
+  --dur: 260ms;
+  --dur-slow: 460ms;
+}
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: var(--paper);
+  --bg-tint: #EFE7D6;
+  --surface: var(--paper);
+  --surface-hover: #EFE6D4;
+  --fg: var(--ink);
+  --fg-muted: var(--olive);
+  --fg-soft: #7A715A;
+  --on-ink: var(--paper);
+  --accent: var(--gold-l);
+  --accent-hover: #6F5417;
+  --ext: var(--gold-l);
+  --status: var(--teal-l);
+  --line: rgba(28, 32, 48, 0.12);
+  --line-strong: rgba(28, 32, 48, 0.22);
+  --ring: rgba(138, 107, 31, 0.5);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: var(--midnight);
+  --bg-tint: #0E1424;
+  --surface: var(--midnight);
+  --surface-hover: #121829;
+  --fg: var(--cream);
+  --fg-muted: var(--taupe);
+  --fg-soft: #9C9176;
+  --on-ink: var(--midnight);
+  --accent: var(--gold-d);
+  --accent-hover: var(--gold-mist);
+  --ext: var(--gold-d);
+  --status: var(--teal-d);
+  --line: rgba(245, 240, 230, 0.12);
+  --line-strong: rgba(245, 240, 230, 0.22);
+  --ring: rgba(201, 169, 97, 0.6);
+}
+
+.gm-label {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-med);
+  font-size: var(--fs-label);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.gm-display {
+  font-family: var(--font-display); font-optical-sizing: auto;
+  font-weight: var(--fw-light); font-size: var(--fs-display);
+  line-height: var(--lh-tight); letter-spacing: var(--track-display);
+  color: var(--fg);
+}
+.gm-h2 {
+  font-family: var(--font-display); font-optical-sizing: auto;
+  font-weight: var(--fw-light); font-size: var(--fs-h2);
+  line-height: var(--lh-snug); color: var(--fg);
+}
+.gm-ext {
+  font-family: var(--font-display); font-optical-sizing: auto;
+  font-style: italic; font-weight: var(--fw-reg);
+  font-size: var(--fs-ext); color: var(--ext);
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.gm-body { font-family: var(--font-body); font-weight: var(--fw-reg); font-size: var(--fs-body); line-height: var(--lh-body); color: var(--fg); }
+.gm-muted { color: var(--fg-muted); }

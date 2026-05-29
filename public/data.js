@@ -1,0 +1,167 @@
+/* ============================================================
+   HOTEL GRAN MARQUISE — Diretório de Ramais
+   Atualizado em 26/12/2025 (by Kamilly Sales).
+   ============================================================ */
+window.GM_UPDATED = "26/12/2025";
+window.GM_UPDATED_BY = "Kamilly Sales";
+window.GM_TOLLFREE = "0800-275-2202";
+
+window.GM_DIRECTORY = [
+  {
+    sector: "Gerência Geral / Marketing",
+    short: "Gerência",
+    entries: [
+      { role: "Gerente Geral", names: "Sr. Philippe Godefroit", ext: "5001" },
+      { role: "Assistente Comercial e Gerência Geral", names: "Thais Araujo", ext: "5002" },
+      { role: "Analista de Revenue Management PL.", names: "Julia Silva", ext: "5252" },
+      { role: "Coordenadora de Comunicação & Marketing", names: "Natália Lima", ext: "5207" },
+    ],
+  },
+  {
+    sector: "Recursos Humanos",
+    short: "RH",
+    entries: [
+      { role: "Gerente de Gestão de Pessoas e de Qualidade", names: "Aline Aragão", ext: "5241" },
+      { role: "Assistente de Qualidade", names: "Mikaelle Bacelar", ext: "5238" },
+      { role: "Analista de Processos", names: "Raquel Barros", ext: "5237" },
+      { role: "Analista de Gestão de Pessoas", names: "Thaís Ellen", ext: "5244" },
+      { role: "Analista de Gestão de Pessoas PL", names: "Saymon Costa", ext: "5240" },
+    ],
+  },
+  {
+    sector: "Controladoria / TI / Segurança",
+    short: "Controladoria · TI",
+    entries: [
+      { role: "Controller", names: "Felipe Castro", ext: "5050" },
+      { role: "Analista Financeiro PL", names: "Emanuel Bezerra", ext: "5094" },
+      { role: "Analista de Faturamento", names: "Erica Ângelo", ext: "5093" },
+      { role: "Encarregada de Tesouraria (Contas a Pagar)", names: "Silvia Helena", ext: "5055" },
+      { role: "Assistente de Apoio Administrativo", names: "Letícia Monteiro", ext: "5058" },
+      { role: "Assistente Financeiro PL", names: "Gregory Santos", ext: "5062" },
+      { role: "Analista de Pessoal Sênior", names: "Dryelle Ataliba", ext: "5239" },
+      { role: "Aprendizes - DP e Segurança do Trabalho", names: "Tharsilla Lucena / Julia Vitória", ext: "8426" },
+      { role: "TI / DataCenter (Coordenador de TI)", names: "Richard Anderson", ext: "5051" },
+      { role: "TI / DataCenter (Analista de Suporte Jr.)", names: "Márcio Roberto", ext: "5061" },
+      { role: "Segurança (Coordenador de Segurança)", names: "Jussieudo Gomes", ext: "5245" },
+      { role: "Portaria de Serviço", names: "", ext: "5224" },
+    ],
+  },
+  {
+    sector: "Manutenção",
+    short: "Manutenção",
+    entries: [
+      { role: "Gerente de Manutenção", names: "Jéssica Bezerra", ext: "5221" },
+      { role: "Sala de Serviço", names: "", ext: "5228" },
+      { role: "Sala de Serviço", names: "Messias Soares", ext: "5015" },
+      { role: "Assistente Administrativo", names: "Ana Katryn", ext: "8464" },
+      { role: "Engenheiro Civil", names: "Eden Malveira", ext: "5230" },
+      { role: "Assistente de PCM", names: "Renan Vital", ext: "5015" },
+      { role: "Técnica em Edificações", names: "Karene Ferreira", ext: "5226" },
+      { role: "Assistente Adm de Obras", names: "Diego Albano", ext: "5231" },
+    ],
+  },
+  {
+    sector: "Hospedagem",
+    short: "Hospedagem",
+    entries: [
+      { role: "Gerente de Recepção & SPA", names: "Mariana Grego", ext: "5255" },
+      { role: "Recepção", names: "Rafael Fontenele, Ana Carla, Cesar Gomes", ext: "5258 / 5259" },
+      { role: "Mesa VIP (Recepção)", names: "Rafael Lima", ext: "5261" },
+      { role: "Concierge", names: "Ana Rey", ext: "5262" },
+      { role: "Capitão Porteiro", names: "Dorgival Nascimento / Rogério Carvalho", ext: "5267" },
+      { role: "Guest Service", names: "Kamilly Sales / Nathalia Girão / Louise Alves", ext: "99" },
+      { role: "Estacionamento Central Park", names: "", ext: "5269" },
+      { role: "Gran Spa by L'Occitane", names: "Georgia Gomes / Julia Lima", ext: "5010" },
+      { role: "Governanta Executiva", names: "Ana Paula Fernandes", ext: "5003" },
+      { role: "Assistente de Governança", names: "Alisson Oliveira", ext: "5004" },
+      { role: "Supervisoras de Andar (Mesa)", names: "Letícia Vitória / Erimilda dos Santos", ext: "5004" },
+      { role: "Assistente Administrativo da Governança (Mesa)", names: "Rodrigo Bandeira", ext: "5004" },
+      { role: "Rouparia", names: "Fátima Cardoso / Aleandra Dias / Jaqueline Monteiro / Jaciane Farias", ext: "5243" },
+      { role: "Lavanderia", names: "Ilná Moraes", ext: "5340" },
+    ],
+  },
+  {
+    sector: "Administração A&B",
+    short: "Adm. A&B",
+    entries: [
+      { role: "Gerente de A&B", names: "", ext: "5288" },
+      { role: "Cozinha Central - Chef Executivo", names: "Chefe Edilson", ext: "5225" },
+      { role: "Assistente Operacional de A&B", names: "Érika Nayane", ext: "5067" },
+    ],
+  },
+  {
+    sector: "Compras / Almoxarifado",
+    short: "Compras",
+    entries: [
+      { role: "Coordenador Fiscal", names: "Jefferson Teixeira", ext: "5248" },
+      { role: "Compradora Sênior", names: "Danielle de Oliveira", ext: "5066" },
+      { role: "Compradora Pleno", names: "Claudiane Chagas", ext: "5216" },
+      { role: "Almoxarifado", names: "Adalberto Mota", ext: "5056" },
+      { role: "Auxiliar de Almoxarifado", names: "Flavio Cauã", ext: "5056" },
+      { role: "Analista Pleno", names: "Isaac Oliveira", ext: "8494" },
+    ],
+  },
+  {
+    sector: "Bares / Restaurantes / Cozinha",
+    short: "Bares · Restaurantes",
+    entries: [
+      { role: "Maitres do Restaurante Mucuripe", names: "Chaves Matos (maitre executivo), Francisco de Assis (maitre), Paulo Cassimiro (maitre)", ext: "5364" },
+      { role: "Assistente de Relacionamento", names: "Natália Gonçalves / Gabriela Gomez", ext: "5363" },
+      { role: "Nutricionista", names: "Glauber Santos", ext: "5242" },
+      { role: "Restaurante Mangostin", names: "Rafael Bento (maitre), Elena Zamparini (hostess)", ext: "5310" },
+      { role: "Cozinha Mangostin", names: "José Ribamar", ext: "8406" },
+      { role: "Restaurante Mucuripe", names: "Raylane Monteiro, Gabriela Gomez, Juliete Torres (hostesses)", ext: "5246" },
+      { role: "Cozinha Mucuripe", names: "João de Souza, Solange Rufino e Albert Rafaeli", ext: "5253" },
+      { role: "Cozinha Central", names: "Chefe Maciel, Claudenor Uchôa, Antonio Domingos", ext: "5227" },
+      { role: "Hortifruti", names: "", ext: "5012" },
+      { role: "Gard Manger", names: "", ext: "5273" },
+      { role: "Room Service", names: "Silvano Almeida, Wladia Alina, Ulisses Duarte", ext: "8424" },
+      { role: "Captain Room Service", names: "Claudio Uchôa", ext: "8424" },
+      { role: "Lobby Bar", names: "Daniel Silva, Pacheco, David Barros", ext: "5271" },
+      { role: "Piscina", names: "João Avelino, Camila Miranda, Erlânia Lima", ext: "5250" },
+      { role: "Cozinha da Piscina", names: "Wesley Oliveira, Francisco Nascimento", ext: "8425" },
+      { role: "Confeitaria / Padaria", names: "Sr. Chiquinho, Dimas, Jakelano, Sheila, Edvaldo", ext: "5257" },
+    ],
+  },
+  {
+    sector: "Vendas / Grupos & Eventos / Reservas",
+    short: "Vendas · Eventos",
+    entries: [
+      { role: "Gerente Geral de Vendas", names: "Catarina Martins", ext: "5305" },
+      { role: "Consultora de Vendas Sênior (Grupos e Eventos)", names: "Briele Ribeiro", ext: "5005" },
+      { role: "Consultora de Vendas Bilíngue (Grupos e Eventos)", names: "Patrícia Ribeiro", ext: "5332" },
+      { role: "Consultor de Vendas Bilíngue (Grupos e Eventos)", names: "Rogério Santos", ext: "5256" },
+      { role: "Consultor de Reservas Bilíngue", names: "Gabriel Costa", ext: "5222" },
+      { role: "Consultora de Reservas Bilíngue", names: "Rosana Tavares", ext: "5223" },
+      { role: "Coordenadora de Eventos", names: "Natécia Alves", ext: "5208" },
+      { role: "Vendas / Eventos Sociais Sênior", names: "Priscila Amorim", ext: "5334" },
+      { role: "Consultora de Vendas (Sociais)", names: "Eduarda Sousa Santos", ext: "5369" },
+      { role: "Assistente de Eventos", names: "Farney Calixto", ext: "5208" },
+    ],
+  },
+  {
+    sector: "Banquetes",
+    short: "Banquetes",
+    entries: [
+      { role: "Encarregado Administrativo", names: "Wanderlan Braz", ext: "8471" },
+      { role: "Assistente Administrativo de A&B", names: "Lene Duarte", ext: "5311" },
+      { role: "Assistente Operacional de Eventos", names: "Ana Paula Araújo", ext: "5311" },
+      { role: "Sala Stewart / Almoxarifado Piso E", names: "Claudio Santos", ext: "5285" },
+      { role: "Assistente e Aux de Almoxarifado (Piso E)", names: "João Coelho, John Emerson", ext: "5285" },
+      { role: "Maitre Banquetes", names: "Gildo Moura, Francisco Maia, Ednir Ferreira (Capitain)", ext: "5208" },
+      { role: "Cozinha Banquetes", names: "Vinicius Vilar", ext: "5286" },
+      { role: "Apoio Piso E (em frente aos elevadores)", names: "", ext: "8421" },
+      { role: "Açougue", names: "", ext: "8415" },
+    ],
+  },
+  {
+    sector: "Diversos / Outros",
+    short: "Diversos",
+    entries: [
+      { role: "Sr. Dionísio Barsi", names: "", ext: "5265" },
+      { role: "Elevador SPA", names: "", ext: "5012" },
+      { role: "Play Gran", names: "", ext: "8421" },
+      { role: "TOLL FREE — Atendimento Fortaleza", names: "", ext: "0800-275-2202" },
+    ],
+  },
+];

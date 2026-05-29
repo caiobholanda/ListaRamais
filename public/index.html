@@ -240,6 +240,19 @@
   }
   .gm-btn:hover { background: var(--accent); color: var(--on-ink); }
 
+  @media (max-width: 600px) {
+    .gm-grid { grid-template-columns: 1fr; gap: 0; }
+    .gm-num { font-size: clamp(1.4rem, 7vw, 1.9rem); }
+    .gm-num--sm { font-size: clamp(1rem, 5vw, 1.35rem); }
+    .gm-section__head { flex-wrap: wrap; gap: 10px; }
+    .gm-section__title { font-size: clamp(1.2rem, 5vw, 1.5rem); }
+    .gm-section__rule { display: none; }
+    .gm-row { padding: 14px 4px; gap: 14px; }
+    .gm-chips { top: 65px; }
+    .gm-chip { padding: 7px 11px; font-size: 0.65rem; }
+    .gm-row__copy { opacity: 1; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, .gm-status__dot { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   }

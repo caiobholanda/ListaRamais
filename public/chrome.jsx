@@ -69,7 +69,7 @@ function Hero({ query, onQuery, shown, onClear }) {
 
   return (
     <section className="gm-hero">
-      <p className="gm-eyebrow">Diretório de Ramais — Fortaleza · CE</p>
+      <p className="gm-eyebrow">Lista de Ramais - Hotel Granmarquise</p>
 
       <div className="gm-search">
         <span className="gm-search__icon" aria-hidden="true"><IconSearch /></span>

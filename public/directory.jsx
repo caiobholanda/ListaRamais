@@ -57,11 +57,9 @@ function Entry({ item, query }) {
         )}
       </div>
       <div className="gm-row__ext">
-        <a
+        <span
           className={"gm-num" + (isLong ? " gm-num--sm" : "")}
-          href={"tel:" + primaryTel}
-          aria-label={(isToll ? "Ligar para " : "Ligar para ramal ") + item.ext}
-        ><Highlight text={item.ext} query={query} /></a>
+        ><Highlight text={item.ext} query={query} /></span>
         <button className="gm-row__copy" onClick={() => copy(item.ext)}
           aria-label="Copiar número" title={copied ? "Copiado!" : "Copiar"}>
           {copied ? <IconCheck size="15" /> : <IconCopy size="15" />}

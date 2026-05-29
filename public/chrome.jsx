@@ -86,7 +86,7 @@ function Hero({ query, onQuery, shown, onClear }) {
         {query && (
           <button className="gm-search__clear" onClick={onClear} aria-label="Limpar busca"><IconClose /></button>
         )}
-        {!query && <span className="gm-search__kbd">/</span>}
+
       </div>
 
       {query && (

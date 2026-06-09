@@ -226,15 +226,15 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
   );
 }
 
-function HistoryModal({ entry, onClose }) {
+function HistoryModal({ onClose }) {
   const [history, setHistory] = useState(null);
 
   useEffect(() => {
-    fetch(`/api/directory/${entry.id}/history`)
+    fetch('/api/directory/history')
       .then(r => r.json())
       .then(d => setHistory(d.history || []))
       .catch(() => setHistory([]));
-  }, [entry.id]);
+  }, []);
 
   const ACTION_LABEL = { criado: 'Criado', editado: 'Editado', ativado: 'Ativado', inativado: 'Inativado' };
   const ACTION_CLS   = { criado: 'adm-hist-badge--new', editado: 'adm-hist-badge--edit', ativado: 'adm-hist-badge--on', inativado: 'adm-hist-badge--off' };
@@ -266,7 +266,7 @@ function HistoryModal({ entry, onClose }) {
     <div className="adm-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="adm-modal adm-modal--hist">
         <div className="adm-modal__header">
-          <span>Histórico — {entry.role}</span>
+          <span>Histórico Geral</span>
           <button className="adm-close-sm" onClick={onClose} aria-label="Fechar"><IconClose size="16" /></button>
         </div>
         <div className="adm-hist-body">
@@ -278,6 +278,10 @@ function HistoryModal({ entry, onClose }) {
             <div key={i} className="adm-hist-item">
               <div className="adm-hist-item__head">
                 <span className={"adm-hist-badge " + (ACTION_CLS[h.action] || '')}>{ACTION_LABEL[h.action] || h.action}</span>
+                <span className="adm-hist-entry">
+                  {h.role || `Ramal #${h.entryId}`}
+                  {h.sector ? <em> · {h.sector}</em> : null}
+                </span>
                 <span className="adm-hist-by">{h.by}</span>
                 <span className="adm-hist-at">{fmtDate(h.at)}</span>
               </div>
@@ -294,7 +298,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editEntry, setEditEntry] = useState(null);
   const [filterSector, setFilterSector] = useState("all");
-  const [histEntry, setHistEntry] = useState(null);
+  const [showHist, setShowHist] = useState(false);
 
   const allEntries = useMemo(() =>
     sectors.flatMap(s => s.entries.map(e => ({ ...e, sector: s.sector, short: s.short }))),
@@ -312,6 +316,9 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
         <div className="adm-panel__header">
           <button className="adm-close-sm" onClick={onClose} aria-label="Fechar"><IconClose size="18" /></button>
           <span className="adm-title">Gerenciar Diretório</span>
+          <button className="adm-hist-btn" onClick={() => setShowHist(true)}>
+            <IconHistory size="13" sw="1.8" /> Histórico
+          </button>
           <button className="adm-add-btn" onClick={() => { setEditEntry(null); setFormOpen(true); }}>
             <IconPlus size="14" sw="2.2" /> Adicionar
           </button>
@@ -351,10 +358,6 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
                   onClick={() => { setEditEntry(entry); setFormOpen(true); }}>
                   <IconEdit size="14" sw="1.8" />
                 </button>
-                <button className="adm-act" title="Histórico"
-                  onClick={() => setHistEntry(entry)}>
-                  <IconHistory size="14" sw="1.8" />
-                </button>
                 <button className={"adm-act adm-act--toggle" + (entry.active !== false ? " is-on" : "")}
                   title={entry.active !== false ? "Desativar" : "Ativar"}
                   onClick={() => onToggle(entry.id)}>
@@ -379,7 +382,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
         />
       )}
 
-      {histEntry && <HistoryModal entry={histEntry} onClose={() => setHistEntry(null)} />}
+      {showHist && <HistoryModal onClose={() => setShowHist(false)} />}
     </>
   );
 }

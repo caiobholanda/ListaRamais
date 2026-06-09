@@ -297,6 +297,15 @@
     display: grid; place-items: center; transition: all var(--dur-fast) var(--ease);
   }
   .adm-close-sm:hover { color: var(--fg); border-color: var(--fg); }
+  .adm-hist-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono); font-weight: 500; font-size: 0.68rem;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 8px 14px; border-radius: var(--r-sm);
+    background: transparent; color: var(--fg-muted); border: 1px solid var(--line-strong); cursor: pointer;
+    transition: all var(--dur-fast) var(--ease);
+  }
+  .adm-hist-btn:hover { color: var(--fg); border-color: var(--fg); }
   .adm-add-btn {
     display: inline-flex; align-items: center; gap: 7px;
     font-family: var(--font-mono); font-weight: 500; font-size: 0.68rem;
@@ -326,14 +335,14 @@
   /* ── Admin list ── */
   .adm-list { flex: 1; overflow-y: auto; }
   .adm-list-head {
-    display: grid; grid-template-columns: 90px 1fr 1fr 80px 70px 110px;
+    display: grid; grid-template-columns: 90px 1fr 1fr 80px 70px 80px;
     padding: 9px 22px; background: var(--surface); border-bottom: 1px solid var(--line);
     font-family: var(--font-mono); font-size: 0.62rem; font-weight: 500;
     letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted);
     position: sticky; top: 0; z-index: 2;
   }
   .adm-row {
-    display: grid; grid-template-columns: 90px 1fr 1fr 80px 70px 110px;
+    display: grid; grid-template-columns: 90px 1fr 1fr 80px 70px 80px;
     padding: 12px 22px; border-bottom: 1px solid var(--line);
     align-items: center; transition: background var(--dur-fast);
   }
@@ -455,7 +464,9 @@
   .adm-hist-badge--edit { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
   .adm-hist-badge--on   { background: color-mix(in srgb, var(--status) 15%, transparent); color: var(--status); }
   .adm-hist-badge--off  { background: color-mix(in srgb, var(--fg-soft) 12%, transparent); color: var(--fg-soft); }
-  .adm-hist-by { font-size: 0.82rem; color: var(--fg); font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-hist-entry { font-size: 0.82rem; color: var(--fg); font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-hist-entry em { font-style: italic; color: var(--fg-muted); font-weight: 400; }
+  .adm-hist-by { font-size: 0.78rem; color: var(--fg-muted); white-space: nowrap; flex: none; }
   .adm-hist-at { font-family: var(--font-mono); font-size: 0.68rem; color: var(--fg-muted); white-space: nowrap; flex: none; }
   .adm-hist-diff { margin-top: 10px; display: flex; flex-direction: column; gap: 7px; }
   .adm-hist-diff-row { display: flex; align-items: baseline; gap: 8px; font-size: 0.82rem; flex-wrap: wrap; }

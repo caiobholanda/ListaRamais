@@ -31,9 +31,9 @@ function loadHist() {
   try { return JSON.parse(fs.readFileSync(HIST_FILE, 'utf8')); } catch { return []; }
 }
 
-function pushHist(entryId, action, user, before, after) {
+function pushHist(entryId, action, user, before, after, ctx) {
   const h = loadHist();
-  h.push({ entryId, action, by: user.nome || user.email || 'admin', email: user.email || '', at: new Date().toISOString(), before: before || null, after: after || null });
+  h.push({ entryId, action, role: ctx?.role || '', sector: ctx?.sector || '', by: user.nome || user.email || 'admin', email: user.email || '', at: new Date().toISOString(), before: before || null, after: after || null });
   fs.writeFileSync(HIST_FILE, JSON.stringify(h, null, 2), 'utf8');
 }
 
@@ -90,7 +90,7 @@ app.post('/api/directory', requireAdmin, (req, res) => {
   if (!sec) { sec = { sector, short: short || sector, entries: [] }; data.push(sec); }
   sec.entries.push({ id, role, names: names || '', ext, active: true });
   saveDir(data);
-  pushHist(id, 'criado', req.hubUser, null, { sector, role, names: names || '', ext });
+  pushHist(id, 'criado', req.hubUser, null, { sector, role, names: names || '', ext }, { role, sector });
   res.status(201).json({ ok: true, id });
 });
 
@@ -110,7 +110,7 @@ app.put('/api/directory/:id', requireAdmin, (req, res) => {
   else if (short) targetSec.short = short;
   targetSec.entries.push({ ...entry, role, names: names || '', ext });
   saveDir(data);
-  pushHist(id, 'editado', req.hubUser, { sector: oldSector, role: entry.role, names: entry.names, ext: entry.ext }, { sector, role, names: names || '', ext });
+  pushHist(id, 'editado', req.hubUser, { sector: oldSector, role: entry.role, names: entry.names, ext: entry.ext }, { sector, role, names: names || '', ext }, { role, sector });
   res.json({ ok: true });
 });
 
@@ -119,9 +119,13 @@ app.patch('/api/directory/:id/toggle', requireAdmin, (req, res) => {
   const data = loadDir();
   for (const sec of data) {
     const entry = sec.entries.find(e => e.id === id);
-    if (entry) { entry.active = !entry.active; saveDir(data); pushHist(id, entry.active ? 'ativado' : 'inativado', req.hubUser, { active: !entry.active }, { active: entry.active }); return res.json({ ok: true, active: entry.active }); }
+    if (entry) { entry.active = !entry.active; saveDir(data); pushHist(id, entry.active ? 'ativado' : 'inativado', req.hubUser, { active: !entry.active }, { active: entry.active }, { role: entry.role, sector: sec.sector }); return res.json({ ok: true, active: entry.active }); }
   }
   res.status(404).json({ ok: false, erro: 'Não encontrado' });
+});
+
+app.get('/api/directory/history', requireAdmin, (_req, res) => {
+  res.json({ ok: true, history: loadHist().slice().reverse() });
 });
 
 app.get('/api/directory/:id/history', requireAdmin, (req, res) => {

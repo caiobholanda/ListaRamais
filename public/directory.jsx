@@ -226,10 +226,75 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
   );
 }
 
+function HistoryModal({ entry, onClose }) {
+  const [history, setHistory] = useState(null);
+
+  useEffect(() => {
+    fetch(`/api/directory/${entry.id}/history`)
+      .then(r => r.json())
+      .then(d => setHistory(d.history || []))
+      .catch(() => setHistory([]));
+  }, [entry.id]);
+
+  const ACTION_LABEL = { criado: 'Criado', editado: 'Editado', ativado: 'Ativado', inativado: 'Inativado' };
+  const ACTION_CLS   = { criado: 'adm-hist-badge--new', editado: 'adm-hist-badge--edit', ativado: 'adm-hist-badge--on', inativado: 'adm-hist-badge--off' };
+  const FIELD_LABEL  = { sector: 'Setor', role: 'Cargo', names: 'Nomes', ext: 'Ramal' };
+
+  function fmtDate(iso) {
+    return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderDiff(before, after) {
+    if (!before || !after) return null;
+    const changed = Object.keys(FIELD_LABEL).filter(k => before[k] !== after[k]);
+    if (!changed.length) return <span className="adm-hist-nodiff">Sem alterações nos campos.</span>;
+    return (
+      <div className="adm-hist-diff">
+        {changed.map(k => (
+          <div key={k} className="adm-hist-diff-row">
+            <span className="adm-hist-diff-field">{FIELD_LABEL[k]}</span>
+            <span className="adm-hist-diff-before">{before[k] || '—'}</span>
+            <span className="adm-hist-diff-arrow">→</span>
+            <span className="adm-hist-diff-after">{after[k] || '—'}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="adm-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="adm-modal adm-modal--hist">
+        <div className="adm-modal__header">
+          <span>Histórico — {entry.role}</span>
+          <button className="adm-close-sm" onClick={onClose} aria-label="Fechar"><IconClose size="16" /></button>
+        </div>
+        <div className="adm-hist-body">
+          {history === null ? (
+            <p className="adm-hist-empty">Carregando…</p>
+          ) : history.length === 0 ? (
+            <p className="adm-hist-empty">Nenhum registro ainda.</p>
+          ) : history.map((h, i) => (
+            <div key={i} className="adm-hist-item">
+              <div className="adm-hist-item__head">
+                <span className={"adm-hist-badge " + (ACTION_CLS[h.action] || '')}>{ACTION_LABEL[h.action] || h.action}</span>
+                <span className="adm-hist-by">{h.by}</span>
+                <span className="adm-hist-at">{fmtDate(h.at)}</span>
+              </div>
+              {h.action === 'editado' && renderDiff(h.before, h.after)}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editEntry, setEditEntry] = useState(null);
   const [filterSector, setFilterSector] = useState("all");
+  const [histEntry, setHistEntry] = useState(null);
 
   const allEntries = useMemo(() =>
     sectors.flatMap(s => s.entries.map(e => ({ ...e, sector: s.sector, short: s.short }))),
@@ -286,6 +351,10 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
                   onClick={() => { setEditEntry(entry); setFormOpen(true); }}>
                   <IconEdit size="14" sw="1.8" />
                 </button>
+                <button className="adm-act" title="Histórico"
+                  onClick={() => setHistEntry(entry)}>
+                  <IconHistory size="14" sw="1.8" />
+                </button>
                 <button className={"adm-act adm-act--toggle" + (entry.active !== false ? " is-on" : "")}
                   title={entry.active !== false ? "Desativar" : "Ativar"}
                   onClick={() => onToggle(entry.id)}>
@@ -309,6 +378,8 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
           onCancel={() => setFormOpen(false)}
         />
       )}
+
+      {histEntry && <HistoryModal entry={histEntry} onClose={() => setHistEntry(null)} />}
     </>
   );
 }

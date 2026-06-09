@@ -326,14 +326,14 @@
   /* ── Admin list ── */
   .adm-list { flex: 1; overflow-y: auto; }
   .adm-list-head {
-    display: grid; grid-template-columns: 90px 1fr 1fr 80px 70px 80px;
+    display: grid; grid-template-columns: 90px 1fr 1fr 80px 70px 110px;
     padding: 9px 22px; background: var(--surface); border-bottom: 1px solid var(--line);
     font-family: var(--font-mono); font-size: 0.62rem; font-weight: 500;
     letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted);
     position: sticky; top: 0; z-index: 2;
   }
   .adm-row {
-    display: grid; grid-template-columns: 90px 1fr 1fr 80px 70px 80px;
+    display: grid; grid-template-columns: 90px 1fr 1fr 80px 70px 110px;
     padding: 12px 22px; border-bottom: 1px solid var(--line);
     align-items: center; transition: background var(--dur-fast);
   }
@@ -438,6 +438,32 @@
     .adm-list-head, .adm-row { grid-template-columns: 70px 1fr 70px 60px 72px; }
     .adm-cell--names, .adm-list-head > span:nth-child(3) { display: none; }
   }
+
+  /* ── History modal ── */
+  .adm-modal--hist { max-width: 560px; }
+  .adm-hist-body { max-height: 480px; overflow-y: auto; }
+  .adm-hist-empty { padding: 28px 22px; color: var(--fg-soft); font-size: 0.88rem; font-style: italic; }
+  .adm-hist-item { padding: 14px 22px; border-bottom: 1px solid var(--line); }
+  .adm-hist-item:last-child { border-bottom: none; }
+  .adm-hist-item__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .adm-hist-badge {
+    display: inline-flex; padding: 3px 10px; border-radius: var(--r-pill);
+    font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; flex: none;
+  }
+  .adm-hist-badge--new  { background: color-mix(in srgb, #3b82f6 15%, transparent); color: #3b82f6; }
+  .adm-hist-badge--edit { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+  .adm-hist-badge--on   { background: color-mix(in srgb, var(--status) 15%, transparent); color: var(--status); }
+  .adm-hist-badge--off  { background: color-mix(in srgb, var(--fg-soft) 12%, transparent); color: var(--fg-soft); }
+  .adm-hist-by { font-size: 0.82rem; color: var(--fg); font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-hist-at { font-family: var(--font-mono); font-size: 0.68rem; color: var(--fg-muted); white-space: nowrap; flex: none; }
+  .adm-hist-diff { margin-top: 10px; display: flex; flex-direction: column; gap: 7px; }
+  .adm-hist-diff-row { display: flex; align-items: baseline; gap: 8px; font-size: 0.82rem; flex-wrap: wrap; }
+  .adm-hist-diff-field { font-family: var(--font-mono); font-size: 0.62rem; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.1em; min-width: 54px; flex: none; }
+  .adm-hist-diff-before { color: var(--fg-soft); text-decoration: line-through; }
+  .adm-hist-diff-arrow { color: var(--fg-soft); flex: none; }
+  .adm-hist-diff-after { color: var(--fg); font-weight: 500; }
+  .adm-hist-nodiff { font-size: 0.8rem; color: var(--fg-soft); font-style: italic; }
 
   /* ── Sector combobox ── */
   .adm-combo { position: relative; }

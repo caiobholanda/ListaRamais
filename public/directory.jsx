@@ -10,6 +10,78 @@ function plainNorm(str) {
   return str.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
+const CHAMADOS_SECTORS = [
+  'Banquetes','Bar Rooftop','Comercial / Vendas','Compras / Almoxarifado','Concierge',
+  'Confeitaria / Padaria','Controladoria','Cozinha','Estacionamento','Eventos e Convenções',
+  'Financeiro','Fitness Center','Gerência Geral','Governança','Jurídico','Lavanderia',
+  'Lobby Bar','Manutenção','Marketing','Mensageria / Portaria','Nutrição','Piscina',
+  'Play Gran','Recepção','Recursos Humanos','Reservas','Restaurante Mangostin',
+  'Restaurante Mucuripe','Revenue Management','Room Service','Rouparia','Segurança',
+  "Spa by L'Occitane",'Tecnologia da Informação','Transportes'
+];
+
+function SectorCombobox({ value, onChange, dirSectors }) {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(-1);
+  const inputRef = useRef(null);
+  const dropRef = useRef(null);
+
+  const allOptions = useMemo(() => {
+    const seen = new Set();
+    return [...dirSectors, ...CHAMADOS_SECTORS]
+      .filter(s => { const k = plainNorm(s); if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => a.localeCompare(b, 'pt'));
+  }, [dirSectors]);
+
+  const filtered = useMemo(() => {
+    const q = plainNorm(value.trim());
+    return q ? allOptions.filter(s => plainNorm(s).includes(q)) : allOptions;
+  }, [allOptions, value]);
+
+  function pick(s) { onChange(s); setOpen(false); setHighlighted(-1); }
+
+  function handleKeyDown(e) {
+    if (!open) { if (e.key === 'ArrowDown') { setOpen(true); setHighlighted(0); e.preventDefault(); } return; }
+    if (e.key === 'ArrowDown') { setHighlighted(h => Math.min(h + 1, filtered.length - 1)); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { setHighlighted(h => Math.max(h - 1, 0)); e.preventDefault(); }
+    else if (e.key === 'Enter' && highlighted >= 0) { pick(filtered[highlighted]); e.preventDefault(); }
+    else if (e.key === 'Escape') { setOpen(false); setHighlighted(-1); }
+  }
+
+  useEffect(() => {
+    if (open && highlighted >= 0 && dropRef.current) {
+      const el = dropRef.current.children[highlighted];
+      if (el) el.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlighted, open]);
+
+  return (
+    <div className="adm-combo">
+      <input
+        ref={inputRef}
+        className="adm-input"
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true); setHighlighted(-1); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 160)}
+        onKeyDown={handleKeyDown}
+        placeholder="Setor"
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <div className="adm-combo__drop" ref={dropRef}>
+          {filtered.map((s, i) => (
+            <div key={s} className={"adm-combo__opt" + (i === highlighted ? " is-hi" : "")}
+              onMouseDown={() => pick(s)} onMouseEnter={() => setHighlighted(i)}>
+              {s}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Highlight({ text, query }) {
   if (!query || !text) return text || null;
   const q = plainNorm(query.trim());
@@ -128,11 +200,7 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
         </div>
         <div className="adm-modal__body">
           <label className="adm-label">Setor</label>
-          <input className="adm-input" list="adm-sector-list" value={sector}
-            onChange={e => setSector(e.target.value)} placeholder="Setor" />
-          <datalist id="adm-sector-list">
-            {existingSectors.map(s => <option key={s} value={s} />)}
-          </datalist>
+          <SectorCombobox value={sector} onChange={setSector} dirSectors={existingSectors} />
 
           <label className="adm-label">Cargo / Função *</label>
           <input className="adm-input" value={role} onChange={e => setRole(e.target.value)}

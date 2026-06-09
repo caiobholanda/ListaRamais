@@ -438,6 +438,20 @@
     .adm-list-head, .adm-row { grid-template-columns: 70px 1fr 70px 60px 72px; }
     .adm-cell--names, .adm-list-head > span:nth-child(3) { display: none; }
   }
+
+  /* ── Sector combobox ── */
+  .adm-combo { position: relative; }
+  .adm-combo__drop {
+    position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 300;
+    background: var(--bg); border: 1px solid var(--line-strong);
+    border-radius: var(--r-sm); max-height: 220px; overflow-y: auto;
+    box-shadow: 0 8px 24px color-mix(in srgb, #000 14%, transparent);
+  }
+  .adm-combo__opt {
+    padding: 9px 14px; font-size: 0.88rem; color: var(--fg); cursor: pointer;
+    transition: background var(--dur-fast);
+  }
+  .adm-combo__opt:hover, .adm-combo__opt.is-hi { background: var(--surface-hover); color: var(--accent); }
 </style>
 </head>
 <body>

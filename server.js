@@ -45,7 +45,6 @@ function requireAuth(req, res, next) {
   }
 }
 
-app.use(requireAuth);
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 

@@ -298,6 +298,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editEntry, setEditEntry] = useState(null);
   const [filterSector, setFilterSector] = useState("all");
+  const [filterText, setFilterText] = useState("");
   const [showHist, setShowHist] = useState(false);
 
   const allEntries = useMemo(() =>
@@ -305,9 +306,12 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
     [sectors]
   );
 
-  const visible = filterSector === "all"
-    ? allEntries
-    : allEntries.filter(e => e.sector === filterSector);
+  const visible = useMemo(() => {
+    const q = plainNorm(filterText.trim());
+    return allEntries
+      .filter(e => filterSector === "all" || e.sector === filterSector)
+      .filter(e => !q || plainNorm([e.role, e.names, e.ext, e.sector].join(" ")).includes(q));
+  }, [allEntries, filterSector, filterText]);
 
   return (
     <>
@@ -325,6 +329,14 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
         </div>
 
         <div className="adm-toolbar">
+          <input
+            className="adm-input adm-toolbar__search"
+            type="search"
+            value={filterText}
+            onChange={e => setFilterText(e.target.value)}
+            placeholder="Filtrar por cargo, nome, ramal…"
+            autoComplete="off"
+          />
           <select className="adm-filter-select" value={filterSector}
             onChange={e => setFilterSector(e.target.value)}>
             <option value="all">Todos os setores</option>

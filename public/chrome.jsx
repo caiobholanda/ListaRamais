@@ -14,15 +14,6 @@ function Logo() {
   );
 }
 
-function StatusDot() {
-  return (
-    <span className="gm-status" title="Central em operação 24h">
-      <span className="gm-status__dot" aria-hidden="true" />
-      <span className="gm-status__txt">Em operação · 24h</span>
-    </span>
-  );
-}
-
 function ThemeToggle({ theme, onToggle }) {
   const dark = theme === "dark";
   return (
@@ -40,13 +31,17 @@ function ThemeToggle({ theme, onToggle }) {
   );
 }
 
-function Header({ theme, onToggle, scrolled }) {
+function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick }) {
   return (
     <header className={"gm-header" + (scrolled ? " is-scrolled" : "")} id="top">
       <div className="gm-header__inner">
         <Logo />
         <div className="gm-header__right">
-          <StatusDot />
+          {isAdmin && (
+            <button className="gm-gear-btn" onClick={onAdminClick} title="Gerenciar diretório" aria-label="Gerenciar diretório">
+              <IconGear size="18" />
+            </button>
+          )}
           <ThemeToggle theme={theme} onToggle={onToggle} />
         </div>
       </div>
@@ -86,7 +81,6 @@ function Hero({ query, onQuery, shown, onClear }) {
         {query && (
           <button className="gm-search__clear" onClick={onClear} aria-label="Limpar busca"><IconClose /></button>
         )}
-
       </div>
 
       {query && (
@@ -119,4 +113,4 @@ function SectorChips({ sectors, active, onPick, counts }) {
   );
 }
 
-window.GMChrome = { Logo, ThemeToggle, StatusDot, Header, Hero, SectorChips };
+window.GMChrome = { Logo, ThemeToggle, Header, Hero, SectorChips };

@@ -3,86 +3,114 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SSO_SECRET = process.env.SSO_SECRET || 'dev-sso-secret';
+const DATA_DIR = path.join(__dirname, 'data');
+const DATA_FILE = path.join(DATA_DIR, 'directory.json');
 
 app.use(cookieParser());
+app.use(express.json());
+
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+function loadDir() {
+  if (!fs.existsSync(DATA_FILE)) return [];
+  return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+}
+
+function saveDir(data) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+
+function nextId(data) {
+  let max = 0;
+  for (const s of data) for (const e of s.entries) if (e.id > max) max = e.id;
+  return max + 1;
+}
+
+function requireAdmin(req, res, next) {
+  const token = req.cookies && req.cookies.hub_session;
+  if (!token) return res.status(401).json({ ok: false, erro: 'Não autenticado' });
+  try {
+    const payload = jwt.verify(token, SSO_SECRET);
+    if (payload.tipo !== 'admin') return res.status(403).json({ ok: false, erro: 'Acesso restrito a admins' });
+    req.hubUser = payload;
+    next();
+  } catch {
+    res.clearCookie('hub_session');
+    return res.status(401).json({ ok: false, erro: 'Sessão expirada' });
+  }
+}
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.get('/sso', (req, res) => {
   const { sso_token } = req.query;
-  if (!sso_token) return res.redirect('/?needs_auth=1');
+  if (!sso_token) return res.redirect('/');
   try {
     const payload = jwt.verify(sso_token, SSO_SECRET);
     const session = jwt.sign(
-      { nome: payload.nome, email: payload.email },
+      { nome: payload.nome, email: payload.email, tipo: payload.tipo || 'usuario' },
       SSO_SECRET,
       { expiresIn: '8h' }
     );
-    res.cookie('hub_session', session, {
-      httpOnly: true,
-      sameSite: 'Strict',
-      maxAge: 8 * 3600 * 1000,
-    });
+    res.cookie('hub_session', session, { httpOnly: true, sameSite: 'Strict', maxAge: 8 * 3600 * 1000 });
+    res.cookie('hub_tipo', payload.tipo === 'admin' ? 'admin' : 'usuario', { sameSite: 'Strict', maxAge: 8 * 3600 * 1000 });
     return res.redirect('/');
   } catch {
-    return res.redirect('/?needs_auth=1');
+    return res.redirect('/');
   }
 });
 
-function requireAuth(req, res, next) {
-  const token = req.cookies && req.cookies.hub_session;
-  if (!token) return res.send(loginPage());
-  try {
-    jwt.verify(token, SSO_SECRET);
-    next();
-  } catch {
-    res.clearCookie('hub_session');
-    return res.send(loginPage());
+app.get('/api/directory', (_req, res) => {
+  res.json({ ok: true, sectors: loadDir() });
+});
+
+app.post('/api/directory', requireAdmin, (req, res) => {
+  const { sector, short, role, names, ext } = req.body;
+  if (!sector || !role || !ext) return res.status(400).json({ ok: false, erro: 'sector, role e ext são obrigatórios' });
+  const data = loadDir();
+  const id = nextId(data);
+  let sec = data.find(s => s.sector === sector);
+  if (!sec) { sec = { sector, short: short || sector, entries: [] }; data.push(sec); }
+  sec.entries.push({ id, role, names: names || '', ext, active: true });
+  saveDir(data);
+  res.status(201).json({ ok: true, id });
+});
+
+app.put('/api/directory/:id', requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id);
+  const { sector, short, role, names, ext } = req.body;
+  if (!role || !ext) return res.status(400).json({ ok: false, erro: 'role e ext são obrigatórios' });
+  const data = loadDir();
+  let entry;
+  for (const sec of data) {
+    const idx = sec.entries.findIndex(e => e.id === id);
+    if (idx !== -1) { [entry] = sec.entries.splice(idx, 1); if (!sec.entries.length) data.splice(data.indexOf(sec), 1); break; }
   }
-}
+  if (!entry) return res.status(404).json({ ok: false, erro: 'Não encontrado' });
+  let targetSec = data.find(s => s.sector === sector);
+  if (!targetSec) { targetSec = { sector, short: short || sector, entries: [] }; data.push(targetSec); }
+  else if (short) targetSec.short = short;
+  targetSec.entries.push({ ...entry, role, names: names || '', ext });
+  saveDir(data);
+  res.json({ ok: true });
+});
+
+app.patch('/api/directory/:id/toggle', requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id);
+  const data = loadDir();
+  for (const sec of data) {
+    const entry = sec.entries.find(e => e.id === id);
+    if (entry) { entry.active = !entry.active; saveDir(data); return res.json({ ok: true, active: entry.active }); }
+  }
+  res.status(404).json({ ok: false, erro: 'Não encontrado' });
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.listen(PORT, () => console.log(`DiretorioRamais rodando em http://localhost:${PORT}`));
-
-function loginPage() {
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Acesso — Gran Marquise</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;1,300&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #0A0E1A; color: #F5F0E6; font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-  .wrap { text-align: center; padding: 48px 24px; }
-  .logo { font-size: 10px; letter-spacing: 0.35em; text-transform: uppercase; color: #8A7E64; margin-bottom: 36px; display: flex; align-items: center; justify-content: center; gap: 10px; }
-  .dot { width: 4px; height: 4px; border-radius: 50%; background: #C9A961; display: inline-block; }
-  h1 { font-family: 'Fraunces', serif; font-weight: 300; font-style: italic; font-size: 32px; color: #F5F0E6; margin-bottom: 12px; letter-spacing: -0.02em; }
-  p { font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; color: #8A7E64; margin-bottom: 36px; line-height: 1.5; }
-  a { display: inline-flex; align-items: center; gap: 10px; padding: 13px 28px; background: transparent; border: 1px solid #C9A961; color: #C9A961; text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; transition: background 0.3s; }
-  a:hover { background: rgba(201,169,97,0.1); }
-  .line { width: 1px; height: 60px; background: linear-gradient(180deg, transparent, #C9A96155, transparent); margin: 0 auto 36px; }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="line"></div>
-  <div class="logo">Gran Marquise <span class="dot"></span> TI</div>
-  <h1>Acesso restrito.</h1>
-  <p>Faça login pelo Hub para acessar<br>a Lista de Ramais.</p>
-  <a href="https://hub-granmarquise.fly.dev">
-    Ir para o Hub
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-  </a>
-</div>
-</body>
-</html>`;
-}

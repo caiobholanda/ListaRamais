@@ -41,7 +41,6 @@ function useCopy() {
 function Entry({ item, query }) {
   const [copied, copy] = useCopy();
   const compact = item.ext.replace(/\s/g, "");
-  const primaryTel = item.ext.split("/")[0].trim().replace(/\D/g, "");
   const isToll = /^0800/.test(compact);
   const isLong = compact.length > 6;
   return (
@@ -57,9 +56,9 @@ function Entry({ item, query }) {
         )}
       </div>
       <div className="gm-row__ext">
-        <span
-          className={"gm-num" + (isLong ? " gm-num--sm" : "")}
-        ><Highlight text={item.ext} query={query} /></span>
+        <span className={"gm-num" + (isLong ? " gm-num--sm" : "")}>
+          <Highlight text={item.ext} query={query} />
+        </span>
         <button className="gm-row__copy" onClick={() => copy(item.ext)}
           aria-label="Copiar número" title={copied ? "Copiado!" : "Copiar"}>
           {copied ? <IconCheck size="15" /> : <IconCopy size="15" />}
@@ -101,11 +100,161 @@ function EmptyState({ query, onClear }) {
   );
 }
 
+// ── Admin Panel ──────────────────────────────────────────────────────────────
+
+function EntryForm({ entry, sectors, onSave, onCancel }) {
+  const [sector, setSector] = useState(entry ? entry.sector : (sectors[0] ? sectors[0].sector : ""));
+  const [role, setRole] = useState(entry ? entry.role : "");
+  const [names, setNames] = useState(entry ? entry.names : "");
+  const [ext, setExt] = useState(entry ? entry.ext : "");
+  const [saving, setSaving] = useState(false);
+
+  const existingSectors = sectors.map(s => s.sector);
+
+  async function handleSave() {
+    if (!sector.trim() || !role.trim() || !ext.trim()) return;
+    setSaving(true);
+    const short = sectors.find(s => s.sector === sector)?.short || sector.split(/[\s/]/)[0];
+    await onSave({ sector: sector.trim(), short, role: role.trim(), names: names.trim(), ext: ext.trim() });
+    setSaving(false);
+  }
+
+  return (
+    <div className="adm-modal-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
+      <div className="adm-modal">
+        <div className="adm-modal__header">
+          <span>{entry ? "Editar Ramal" : "Adicionar Ramal"}</span>
+          <button className="adm-close-sm" onClick={onCancel} aria-label="Fechar"><IconClose size="16" /></button>
+        </div>
+        <div className="adm-modal__body">
+          <label className="adm-label">Setor</label>
+          <input className="adm-input" list="adm-sector-list" value={sector}
+            onChange={e => setSector(e.target.value)} placeholder="Setor" />
+          <datalist id="adm-sector-list">
+            {existingSectors.map(s => <option key={s} value={s} />)}
+          </datalist>
+
+          <label className="adm-label">Cargo / Função *</label>
+          <input className="adm-input" value={role} onChange={e => setRole(e.target.value)}
+            placeholder="Ex: Gerente de Recepção" />
+
+          <label className="adm-label">Nomes</label>
+          <input className="adm-input" value={names} onChange={e => setNames(e.target.value)}
+            placeholder="Ex: João Silva / Maria Santos" />
+
+          <label className="adm-label">Ramal / Número *</label>
+          <input className="adm-input" value={ext} onChange={e => setExt(e.target.value)}
+            placeholder="Ex: 5001" />
+        </div>
+        <div className="adm-modal__footer">
+          <button className="adm-btn adm-btn--ghost" onClick={onCancel}>Cancelar</button>
+          <button className="adm-btn adm-btn--gold" onClick={handleSave}
+            disabled={saving || !sector.trim() || !role.trim() || !ext.trim()}>
+            {saving ? "Salvando…" : "Salvar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
+  const [formOpen, setFormOpen] = useState(false);
+  const [editEntry, setEditEntry] = useState(null);
+  const [filterSector, setFilterSector] = useState("all");
+
+  const allEntries = useMemo(() =>
+    sectors.flatMap(s => s.entries.map(e => ({ ...e, sector: s.sector, short: s.short }))),
+    [sectors]
+  );
+
+  const visible = filterSector === "all"
+    ? allEntries
+    : allEntries.filter(e => e.sector === filterSector);
+
+  return (
+    <>
+      <div className="adm-overlay" onClick={onClose} />
+      <div className="adm-panel" role="dialog" aria-label="Gerenciar diretório">
+        <div className="adm-panel__header">
+          <button className="adm-close-sm" onClick={onClose} aria-label="Fechar"><IconClose size="18" /></button>
+          <span className="adm-title">Gerenciar Diretório</span>
+          <button className="adm-add-btn" onClick={() => { setEditEntry(null); setFormOpen(true); }}>
+            <IconPlus size="14" sw="2.2" /> Adicionar
+          </button>
+        </div>
+
+        <div className="adm-toolbar">
+          <select className="adm-filter-select" value={filterSector}
+            onChange={e => setFilterSector(e.target.value)}>
+            <option value="all">Todos os setores</option>
+            {sectors.map(s => <option key={s.sector} value={s.sector}>{s.short}</option>)}
+          </select>
+          <span className="adm-count">{visible.length} {visible.length === 1 ? "ramal" : "ramais"}</span>
+        </div>
+
+        <div className="adm-list">
+          <div className="adm-list-head">
+            <span>Setor</span>
+            <span>Cargo</span>
+            <span>Nomes</span>
+            <span>Ramal</span>
+            <span>Status</span>
+            <span></span>
+          </div>
+          {visible.map(entry => (
+            <div key={entry.id} className={"adm-row" + (entry.active === false ? " adm-row--off" : "")}>
+              <span className="adm-cell adm-cell--sec" title={entry.sector}>{entry.short}</span>
+              <span className="adm-cell adm-cell--role">{entry.role}</span>
+              <span className="adm-cell adm-cell--names">{entry.names || <em className="adm-empty">—</em>}</span>
+              <span className="adm-cell adm-cell--ext">{entry.ext}</span>
+              <span className="adm-cell">
+                <span className={"adm-badge" + (entry.active !== false ? " adm-badge--on" : " adm-badge--off")}>
+                  {entry.active !== false ? "Ativo" : "Inativo"}
+                </span>
+              </span>
+              <span className="adm-cell adm-cell--actions">
+                <button className="adm-act" title="Editar"
+                  onClick={() => { setEditEntry(entry); setFormOpen(true); }}>
+                  <IconEdit size="14" sw="1.8" />
+                </button>
+                <button className={"adm-act adm-act--toggle" + (entry.active !== false ? " is-on" : "")}
+                  title={entry.active !== false ? "Desativar" : "Ativar"}
+                  onClick={() => onToggle(entry.id)}>
+                  <span className="adm-toggle-pill" />
+                </button>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {formOpen && (
+        <EntryForm
+          entry={editEntry}
+          sectors={sectors}
+          onSave={async (data) => {
+            if (editEntry) await onEdit(editEntry.id, data);
+            else await onAdd(data);
+            setFormOpen(false);
+          }}
+          onCancel={() => setFormOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// ── App ──────────────────────────────────────────────────────────────────────
+
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem("gm-theme") || "light");
   const [query, setQuery] = useState("");
   const [sector, setSector] = useState("all");
   const [scrolled, setScrolled] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [allSectors, setAllSectors] = useState(window.GM_DIRECTORY || []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -118,7 +267,42 @@ function App() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const data = window.GM_DIRECTORY;
+  useEffect(() => {
+    const m = document.cookie.match(/(?:^|;\s*)hub_tipo=([^;]*)/);
+    if (m && decodeURIComponent(m[1]) === "admin") setIsAdmin(true);
+
+    fetch("/api/directory")
+      .then(r => r.json())
+      .then(d => { if (d.ok && d.sectors && d.sectors.length) setAllSectors(d.sectors); })
+      .catch(() => {});
+  }, []);
+
+  async function reloadDir() {
+    const d = await fetch("/api/directory").then(r => r.json());
+    if (d.ok) setAllSectors(d.sectors);
+  }
+
+  async function handleAdd(data) {
+    await fetch("/api/directory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    await reloadDir();
+  }
+
+  async function handleEdit(id, data) {
+    await fetch(`/api/directory/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    await reloadDir();
+  }
+
+  async function handleToggle(id) {
+    await fetch(`/api/directory/${id}/toggle`, { method: "PATCH" });
+    await reloadDir();
+  }
+
+  const publicSectors = useMemo(() =>
+    allSectors
+      .map(s => ({ ...s, entries: s.entries.filter(e => e.active !== false) }))
+      .filter(s => s.entries.length > 0),
+    [allSectors]
+  );
 
   const match = (e, s, q) => {
     const hay = plainNorm([e.role, e.names, e.ext, s.sector].join(" "));
@@ -127,36 +311,52 @@ function App() {
 
   const filtered = useMemo(() => {
     const q = plainNorm(query.trim());
-    return data
+    return publicSectors
       .filter((s) => sector === "all" || s.sector === sector)
       .map((s) => q ? { ...s, entries: s.entries.filter((e) => match(e, s, q)) } : s)
       .filter((s) => s.entries.length > 0);
-  }, [data, query, sector]);
+  }, [publicSectors, query, sector]);
 
   const shown = useMemo(() => filtered.reduce((n, s) => n + s.entries.length, 0), [filtered]);
 
   const counts = useMemo(() => {
     const q = plainNorm(query.trim()); const map = {};
-    data.forEach((s) => {
+    publicSectors.forEach((s) => {
       map[s.sector] = !q ? s.entries.length : s.entries.filter((e) => match(e, s, q)).length;
     });
     return map;
-  }, [data, query]);
+  }, [publicSectors, query]);
 
   const clear = () => setQuery("");
 
   return (
     <div className="gm-app">
-      <GMChrome.Header theme={theme} onToggle={() => setTheme(theme === "dark" ? "light" : "dark")} scrolled={scrolled} />
+      <GMChrome.Header
+        theme={theme}
+        onToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
+        scrolled={scrolled}
+        isAdmin={isAdmin}
+        onAdminClick={() => setShowAdmin(true)}
+      />
       <main className="gm-main">
         <GMChrome.Hero query={query} onQuery={setQuery} shown={shown} onClear={clear} />
-        <GMChrome.SectorChips sectors={data} active={sector} onPick={setSector} counts={counts} />
+        <GMChrome.SectorChips sectors={publicSectors} active={sector} onPick={setSector} counts={counts} />
         <div className="gm-results">
           {filtered.length === 0
             ? <EmptyState query={query} onClear={clear} />
             : filtered.map((s, i) => <Section key={s.sector} data={s} query={query} index={i + 1} />)}
         </div>
       </main>
+
+      {showAdmin && (
+        <AdminPanel
+          sectors={allSectors}
+          onClose={() => setShowAdmin(false)}
+          onAdd={handleAdd}
+          onEdit={handleEdit}
+          onToggle={handleToggle}
+        />
+      )}
     </div>
   );
 }

@@ -437,7 +437,11 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
     const q = plainNorm(filterText.trim());
     return allEntries
       .filter(e => filterSector === "all" || e.sector === filterSector)
-      .filter(e => !q || plainNorm([e.role, e.names, e.ext, e.sector].join(" ")).includes(q));
+      .filter(e => !q || plainNorm([e.role, e.names, e.ext, e.sector].join(" ")).includes(q))
+      .sort((a, b) => {
+        const c = a.sector.localeCompare(b.sector, 'pt');
+        return c !== 0 ? c : a.id - b.id;
+      });
   }, [allEntries, filterSector, filterText]);
 
   return (

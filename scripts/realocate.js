@@ -60,7 +60,7 @@ function resolveEntry(e, users) {
 }
 
 (async () => {
-  const dir = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  const sectors = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
   const r = await fetch(USUARIOS_URL, { headers: { Authorization: `Bearer ${SSO_SECRET}` } });
   const d = await r.json();
   if (!d.ok) { console.error('Erro buscando usuarios:', d); process.exit(1); }
@@ -72,7 +72,7 @@ function resolveEntry(e, users) {
   const BY = { nome: 'Sistema (Realocação automática)', email: 'sistema@diretorio-ramais' };
 
   const allEntries = [];
-  for (const sec of dir.sectors) for (const e of sec.entries) allEntries.push({ entry: e, oldSector: sec.sector });
+  for (const sec of sectors) for (const e of sec.entries) allEntries.push({ entry: e, oldSector: sec.sector });
 
   const stats = { realocados: 0, pendentes: 0, skipped: 0, byVia: {} };
   const log = [];
@@ -99,11 +99,11 @@ function resolveEntry(e, users) {
     const beforeSnap = { sector: oldSector, role: entry.role, names: entry.names, ext: entry.ext, pendente: !!entry.pendente };
     const afterSnap  = { sector: newSector, role: entry.role, names: entry.names, ext: entry.ext, pendente: false };
     entry.pendente = false;
-    const oldSec = dir.sectors.find(s => s.sector === oldSector);
+    const oldSec = sectors.find(s => s.sector === oldSector);
     const idx = oldSec.entries.findIndex(x => x.id === entry.id);
     oldSec.entries.splice(idx, 1);
-    let target = dir.sectors.find(s => s.sector === newSector);
-    if (!target) { target = { sector: newSector, short: newSector, entries: [] }; dir.sectors.push(target); }
+    let target = sectors.find(s => s.sector === newSector);
+    if (!target) { target = { sector: newSector, short: newSector, entries: [] }; sectors.push(target); }
     target.entries.push(entry);
     hist.push({ entryId: entry.id, action: 'realocado', role: entry.role, sector: newSector, by: BY.nome, email: BY.email, at: now, before: beforeSnap, after: afterSnap, via: res.via, by_match: res.by });
     stats.realocados++;
@@ -111,11 +111,11 @@ function resolveEntry(e, users) {
     log.push(`OK        [${entry.ext}] ${entry.role}: ${oldSector} -> ${newSector} (${res.via} via "${res.by}")`);
   }
 
-  for (let i = dir.sectors.length - 1; i >= 0; i--) {
-    if (!dir.sectors[i].entries.length) dir.sectors.splice(i, 1);
+  for (let i = sectors.length - 1; i >= 0; i--) {
+    if (!sectors[i].entries.length) sectors.splice(i, 1);
   }
 
-  fs.writeFileSync(DATA_FILE, JSON.stringify(dir, null, 2));
+  fs.writeFileSync(DATA_FILE, JSON.stringify(sectors, null, 2));
   fs.writeFileSync(HIST_FILE, JSON.stringify(hist, null, 2));
 
   console.log('\n=== RESULTADO ===');

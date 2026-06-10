@@ -68,6 +68,20 @@ function nextSetorId(setores) {
 function normalizeStr(str) {
   return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
+function initFromSeed() {
+  if (fs.existsSync(DATA_FILE)) return;
+  const seedFile = path.join(__dirname, 'seed.json');
+  if (!fs.existsSync(seedFile)) return;
+  try {
+    const seed = JSON.parse(fs.readFileSync(seedFile, 'utf8'));
+    saveDir(seed);
+    console.log('[DiretorioRamais] directory.json inicializado a partir do seed (91 ramais)');
+  } catch (e) {
+    console.error('[DiretorioRamais] Falha ao inicializar seed:', e.message);
+  }
+}
+initFromSeed();
+
 function migrarSetores() {
   if (fs.existsSync(SETORES_FILE)) return;
   const dir = loadDir();

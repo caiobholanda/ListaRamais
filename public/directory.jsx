@@ -299,6 +299,7 @@ function SetoresModal({ onClose }) {
 
 function HistoryModal({ onClose }) {
   const [history, setHistory] = useState(null);
+  const [filterDate, setFilterDate] = useState('');
 
   useEffect(() => {
     fetch('/api/directory/history')
@@ -324,6 +325,11 @@ function HistoryModal({ onClose }) {
     return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  function localDateStr(iso) {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   function renderDiff(before, after) {
     if (!before || !after) return null;
     const changed = Object.keys(FIELD_LABEL).filter(k => before[k] !== after[k]);
@@ -342,6 +348,10 @@ function HistoryModal({ onClose }) {
     );
   }
 
+  const filtered = history && filterDate
+    ? history.filter(h => localDateStr(h.at) === filterDate)
+    : history;
+
   return (
     <div className="adm-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="adm-modal adm-modal--hist">
@@ -349,12 +359,28 @@ function HistoryModal({ onClose }) {
           <span>Histórico Geral</span>
           <button className="adm-close-sm" onClick={onClose} aria-label="Fechar"><IconClose size="16" /></button>
         </div>
+        <div className="adm-hist-filter">
+          <input
+            type="date"
+            className="adm-input adm-hist-date-input"
+            value={filterDate}
+            onChange={e => setFilterDate(e.target.value)}
+            title="Filtrar por dia"
+          />
+          {filterDate && (
+            <button className="adm-btn adm-btn--ghost adm-hist-clear-btn" onClick={() => setFilterDate('')}>
+              ×  Limpar
+            </button>
+          )}
+        </div>
         <div className="adm-hist-body">
-          {history === null ? (
+          {filtered === null ? (
             <p className="adm-hist-empty">Carregando…</p>
-          ) : history.length === 0 ? (
+          ) : filtered.length === 0 && !filterDate ? (
             <p className="adm-hist-empty">Nenhum registro ainda.</p>
-          ) : history.map((h, i) => (
+          ) : filtered.length === 0 ? (
+            <p className="adm-hist-empty">Nenhum registro neste dia.</p>
+          ) : filtered.map((h, i) => (
             <div key={i} className="adm-hist-item">
               <div className="adm-hist-item__head">
                 <span className={"adm-hist-badge " + (ACTION_CLS[h.action] || '')}>{ACTION_LABEL[h.action] || h.action}</span>

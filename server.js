@@ -238,7 +238,7 @@ const _setoresCache = { data: null, at: 0 };
 const _usuariosCache = { data: null, at: 0 };
 const SETORES_URL = 'https://sistema-chamados-granmarquise.fly.dev/api/setores';
 const USUARIOS_URL = 'https://sistema-chamados-granmarquise.fly.dev/api/hub/usuarios';
-const SETORES_TTL = 5 * 60 * 1000;
+const SETORES_TTL = 30 * 1000;
 
 app.get('/api/setores', async (_req, res) => {
   const now = Date.now();

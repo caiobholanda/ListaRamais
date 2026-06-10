@@ -558,10 +558,13 @@ function App() {
       .then(d => { if (d.ok && d.sectors && d.sectors.length) setAllSectors(d.sectors); })
       .catch(() => {});
 
-    fetch("/api/setores")
+    const fetchSetores = () => fetch("/api/setores")
       .then(r => r.json())
       .then(d => setChamadosSetores(d.setores || []))
       .catch(() => {});
+    fetchSetores();
+    const t = setInterval(fetchSetores, 30000);
+    return () => clearInterval(t);
   }, []);
 
   async function reloadDir() {

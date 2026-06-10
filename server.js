@@ -23,7 +23,7 @@ function isAdminEmail(email) {
   return ADMIN_EMAILS.includes((email || '').trim().toLowerCase());
 }
 
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = '/data';
 const DATA_FILE = path.join(DATA_DIR, 'directory.json');
 const HIST_FILE = path.join(DATA_DIR, 'history.json');
 

@@ -471,7 +471,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
           <select className="adm-filter-select" value={filterSector}
             onChange={e => setFilterSector(e.target.value)}>
             <option value="all">Todos os setores</option>
-            {sectors.slice().sort((a, b) => a.sector.localeCompare(b.sector, 'pt')).map(s => <option key={s.sector} value={s.sector}>{s.short}</option>)}
+            {sectors.slice().sort((a, b) => a.sector.localeCompare(b.sector, 'pt')).map(s => <option key={s.sector} value={s.sector}>{displayName(s.sector) === s.sector ? s.short : displayName(s.sector)}</option>)}
           </select>
           <span className="adm-count">{visible.length} {visible.length === 1 ? "ramal" : "ramais"}</span>
         </div>
@@ -487,7 +487,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
           </div>
           {visible.map(entry => (
             <div key={entry.id} className={"adm-row" + (entry.active === false ? " adm-row--off" : "")}>
-              <span className="adm-cell adm-cell--sec" title={entry.sector}>{entry.short}</span>
+              <span className="adm-cell adm-cell--sec" title={entry.sector}>{displayName(entry.sector) === entry.sector ? entry.short : displayName(entry.sector)}</span>
               <span className="adm-cell adm-cell--role">
                 {entry.grupo ? <span className="adm-grupo-tag">Grupo de Transferência</span> : entry.role}
               </span>

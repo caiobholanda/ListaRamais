@@ -484,6 +484,31 @@
   .adm-hist-diff-after { color: var(--fg); font-weight: 500; }
   .adm-hist-nodiff { font-size: 0.8rem; color: var(--fg-soft); font-style: italic; }
 
+  /* ── Form errors & toast ── */
+  .adm-form-error {
+    background: color-mix(in srgb, #dc2626 12%, transparent);
+    color: #dc2626; border: 1px solid color-mix(in srgb, #dc2626 35%, transparent);
+    border-radius: var(--r-sm); padding: 9px 12px;
+    font-size: 0.82rem; margin-bottom: 6px;
+  }
+  .adm-field-error {
+    display: block; color: #dc2626; font-size: 0.72rem;
+    font-family: var(--font-mono); letter-spacing: 0.06em;
+    margin-top: 4px; margin-bottom: 2px;
+  }
+  .adm-input--err { border-color: #dc2626; }
+  .adm-input--err:focus { box-shadow: 0 0 0 3px color-mix(in srgb, #dc2626 18%, transparent); }
+  .adm-toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    z-index: 500; padding: 12px 22px; border-radius: var(--r-pill);
+    background: var(--fg); color: var(--bg);
+    font-family: var(--font-mono); font-size: 0.78rem; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    box-shadow: 0 8px 28px color-mix(in srgb, #000 25%, transparent);
+    animation: adm-toast-in 220ms var(--ease) both;
+  }
+  @keyframes adm-toast-in { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
   /* ── Grupo de Transferência ── */
   .adm-checkbox-row {
     display: flex; align-items: center; gap: 10px;

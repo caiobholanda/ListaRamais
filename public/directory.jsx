@@ -193,19 +193,38 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
   const [names, setNames] = useState(entry ? entry.names : '');
   const [ext, setExt] = useState(entry ? entry.ext : '');
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState('');
 
-  const isValid = grupo
-    ? !!ext.trim()
-    : !!(sector.trim() && role.trim() && ext.trim());
+  function validate() {
+    const e = {};
+    if (!ext.trim()) e.ext = 'Ramal é obrigatório';
+    if (!grupo) {
+      if (!sector.trim()) e.sector = 'Setor é obrigatório';
+      if (!role.trim()) e.role = 'Cargo é obrigatório';
+    }
+    setErrors(e);
+    return !Object.keys(e).length;
+  }
 
   async function handleSave() {
-    if (!isValid) return;
+    setApiError('');
+    if (!validate()) return;
+    const all = sectors.flatMap(s => s.entries.map(x => ({ ...x, _sector: s.sector })));
+    const dup = all.find(x => x.ext.trim() === ext.trim() && x.id !== entry?.id);
+    if (dup) {
+      const where = dup.grupo ? 'Grupo de Transferência' : `${dup.role} · ${dup._sector}`;
+      if (!window.confirm(`Ramal ${ext} já está em uso:\n${where}\n\nSalvar mesmo assim?`)) return;
+    }
     setSaving(true);
-    if (grupo) {
-      await onSave({ grupo: true, names: names.trim(), ext: ext.trim() });
-    } else {
-      const short = sectors.find(s => s.sector === sector)?.short || sector.split(/[\s/]/)[0];
-      await onSave({ grupo: false, sector: sector.trim(), short, role: role.trim(), names: names.trim(), ext: ext.trim() });
+    const payload = grupo
+      ? { grupo: true, names: names.trim(), ext: ext.trim() }
+      : { grupo: false, sector: sector.trim(), short: (sectors.find(s => s.sector === sector)?.short || sector.split(/[\s/]/)[0]), role: role.trim(), names: names.trim(), ext: ext.trim() };
+    const result = await onSave(payload);
+    if (result && result.ok === false) {
+      setApiError(result.erro || 'Erro ao salvar');
+      setSaving(false);
+      return;
     }
     setSaving(false);
   }
@@ -218,12 +237,14 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
           <button className="adm-close-sm" onClick={onCancel} aria-label="Fechar"><IconClose size="16" /></button>
         </div>
         <div className="adm-modal__body">
+          {apiError && <div className="adm-form-error">{apiError}</div>}
+
           <label className="adm-checkbox-row">
             <input type="checkbox" checked={grupo}
               onChange={e => {
                 const v = e.target.checked;
                 setGrupo(v);
-                if (v) { setSector(''); setRole(''); }
+                if (v) { setSector(''); setRole(''); setErrors({ ...errors, sector: '', role: '' }); }
               }} />
             <span>Grupo de Transferência</span>
           </label>
@@ -231,11 +252,15 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
           {!grupo && (
             <>
               <label className="adm-label">Setor *</label>
-              <SectorCombobox value={sector} onChange={setSector} />
+              <SectorCombobox value={sector} onChange={v => { setSector(v); if (errors.sector) setErrors({ ...errors, sector: '' }); }} />
+              {errors.sector && <span className="adm-field-error">{errors.sector}</span>}
 
               <label className="adm-label">Cargo / Função *</label>
-              <input className="adm-input" value={role} onChange={e => setRole(e.target.value)}
+              <input className={'adm-input' + (errors.role ? ' adm-input--err' : '')}
+                value={role}
+                onChange={e => { setRole(e.target.value); if (errors.role) setErrors({ ...errors, role: '' }); }}
                 placeholder="Ex: Gerente de Recepção" />
+              {errors.role && <span className="adm-field-error">{errors.role}</span>}
             </>
           )}
 
@@ -244,13 +269,15 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
             placeholder={grupo ? 'Ex: Recepção Geral' : 'Ex: João Silva / Maria Santos'} />
 
           <label className="adm-label">Ramal / Número *</label>
-          <input className="adm-input" value={ext} onChange={e => setExt(e.target.value)}
+          <input className={'adm-input' + (errors.ext ? ' adm-input--err' : '')}
+            value={ext}
+            onChange={e => { setExt(e.target.value); if (errors.ext) setErrors({ ...errors, ext: '' }); }}
             placeholder="Ex: 5001" />
+          {errors.ext && <span className="adm-field-error">{errors.ext}</span>}
         </div>
         <div className="adm-modal__footer">
           <button className="adm-btn adm-btn--ghost" onClick={onCancel}>Cancelar</button>
-          <button className="adm-btn adm-btn--gold" onClick={handleSave}
-            disabled={saving || !isValid}>
+          <button className="adm-btn adm-btn--gold" onClick={handleSave} disabled={saving}>
             {saving ? 'Salvando…' : 'Salvar'}
           </button>
         </div>
@@ -374,6 +401,12 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
   const [filterSector, setFilterSector] = useState("all");
   const [filterText, setFilterText] = useState("");
   const [showHist, setShowHist] = useState(false);
+  const [toast, setToast] = useState('');
+
+  function notify(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2500);
+  }
 
   const allEntries = useMemo(() =>
     sectors.flatMap(s => s.entries.map(e => ({ ...e, sector: s.sector, short: s.short }))),
@@ -462,15 +495,19 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
           entry={editEntry}
           sectors={sectors}
           onSave={async (data) => {
-            if (editEntry) await onEdit(editEntry.id, data);
-            else await onAdd(data);
-            setFormOpen(false);
+            const result = editEntry ? await onEdit(editEntry.id, data) : await onAdd(data);
+            if (result && result.ok) {
+              setFormOpen(false);
+              notify(editEntry ? 'Ramal atualizado.' : 'Ramal adicionado.');
+            }
+            return result;
           }}
           onCancel={() => setFormOpen(false)}
         />
       )}
 
       {showHist && <HistoryModal onClose={() => setShowHist(false)} />}
+      {toast && <div className="adm-toast">{toast}</div>}
     </>
   );
 }
@@ -513,13 +550,21 @@ function App() {
   }
 
   async function handleAdd(data) {
-    await fetch("/api/directory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-    await reloadDir();
+    try {
+      const r = await fetch("/api/directory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      const d = await r.json();
+      if (d.ok) await reloadDir();
+      return d;
+    } catch { return { ok: false, erro: 'Erro de conexão' }; }
   }
 
   async function handleEdit(id, data) {
-    await fetch(`/api/directory/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-    await reloadDir();
+    try {
+      const r = await fetch(`/api/directory/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      const d = await r.json();
+      if (d.ok) await reloadDir();
+      return d;
+    } catch { return { ok: false, erro: 'Erro de conexão' }; }
   }
 
   async function handleToggle(id) {

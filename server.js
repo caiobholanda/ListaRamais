@@ -111,7 +111,9 @@ app.get('/sso', (req, res) => {
 });
 
 app.get('/api/directory', (_req, res) => {
-  res.json({ ok: true, sectors: loadDir() });
+  const data = loadDir();
+  data.forEach(s => s.entries.sort((a, b) => a.id - b.id));
+  res.json({ ok: true, sectors: data });
 });
 
 const GRUPO_SECTOR = 'Grupos de Transferência';
@@ -243,6 +245,8 @@ app.get('/api/setores', async (_req, res) => {
     res.json({ ok: true, setores: [], stale: true });
   }
 });
+
+app.use('/api', (_req, res) => res.status(404).json({ ok: false, erro: 'Endpoint não encontrado' }));
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));

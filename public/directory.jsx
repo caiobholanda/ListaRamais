@@ -467,7 +467,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
           <select className="adm-filter-select" value={filterSector}
             onChange={e => setFilterSector(e.target.value)}>
             <option value="all">Todos os setores</option>
-            {sectors.map(s => <option key={s.sector} value={s.sector}>{s.short}</option>)}
+            {sectors.slice().sort((a, b) => a.sector.localeCompare(b.sector, 'pt')).map(s => <option key={s.sector} value={s.sector}>{s.short}</option>)}
           </select>
           <span className="adm-count">{visible.length} {visible.length === 1 ? "ramal" : "ramais"}</span>
         </div>

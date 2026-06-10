@@ -82,9 +82,9 @@ function Entry({ item, query }) {
 function slug(s) { return plainNorm(s).replace(/[^a-z0-9]+/g, "-"); }
 
 const DISPLAY_ALIAS = {
-  'Tecnologia da Informação': 'Tecnologia da Informação (TI)',
-  'Recursos Humanos': 'Recursos Humanos (RH)',
-  "Spa by L'Occitane": "Spa by L'Occitane (SPA)",
+  'Tecnologia da Informação': 'TI',
+  'Recursos Humanos': 'RH',
+  "Spa by L'Occitane": 'SPA',
 };
 function displayName(s) { return DISPLAY_ALIAS[s] || s; }
 

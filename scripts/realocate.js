@@ -8,7 +8,42 @@ const DIR = '/data';
 const DATA_FILE = path.join(DIR, 'directory.json');
 const HIST_FILE = path.join(DIR, 'history.json');
 const USUARIOS_URL = 'https://sistema-chamados-granmarquise.fly.dev/api/hub/usuarios';
+const SETORES_URL = 'https://sistema-chamados-granmarquise.fly.dev/api/setores';
 const SSO_SECRET = process.env.SSO_SECRET;
+
+function normalizeSetor(raw, canonical) {
+  if (!raw) return null;
+  const direct = canonical.find(c => norm(c) === norm(raw));
+  if (direct) return direct;
+  const alias = {
+    'gerencia geral': 'Gerência Geral',
+    'ti': 'Tecnologia da Informação',
+    'tecnologia da informacao': 'Tecnologia da Informação',
+    'revenue': 'Revenue Management',
+    'governanca': 'Governança',
+    'departamento pessoal': 'Recursos Humanos',
+    'aeb': 'A&B',
+    'a&b': 'A&B',
+    'nutricao': 'Nutrição',
+    'comercial': 'Comercial / Vendas',
+    'almoxarifado': 'Compras / Almoxarifado',
+    'eventos sociais': 'Eventos e Convenções',
+    'engenharia': 'Manutenção',
+    'seguranca': 'Segurança',
+    'pdvs': 'Lobby Bar',
+    'mucuripe': 'Restaurante Mucuripe',
+    'mangostin': 'Restaurante Mangostin',
+    'guest service': 'Recepção',
+    'guest serviçe': 'Recepção',
+    'portaria': 'Mensageria / Portaria',
+    'steward': 'Banquetes',
+    'spa by l\'occitane': 'Spa by L\'Occitane',
+  };
+  const key = norm(raw);
+  if (alias[key]) return alias[key];
+  const partial = canonical.find(c => norm(c).includes(key) || key.includes(norm(c)));
+  return partial || null;
+}
 
 if (!SSO_SECRET) { console.error('SSO_SECRET ausente'); process.exit(1); }
 
@@ -64,7 +99,10 @@ function resolveEntry(e, users) {
   const r = await fetch(USUARIOS_URL, { headers: { Authorization: `Bearer ${SSO_SECRET}` } });
   const d = await r.json();
   if (!d.ok) { console.error('Erro buscando usuarios:', d); process.exit(1); }
-  const users = (d.users || []).filter(u => u.setor);
+  const setoresResp = await (await fetch(SETORES_URL)).json();
+  const canonical = (Array.isArray(setoresResp) ? setoresResp : (setoresResp.setores || [])).map(s => s.nome || s.name).filter(Boolean);
+  console.log(`Setores canonicos: ${canonical.length}`);
+  const users = (d.users || []).filter(u => u.setor).map(u => ({ ...u, setor: normalizeSetor(u.setor, canonical) || u.setor, _raw: u.setor }));
   console.log(`Usuarios com setor: ${users.length}`);
 
   const hist = fs.existsSync(HIST_FILE) ? JSON.parse(fs.readFileSync(HIST_FILE, 'utf8')) : [];

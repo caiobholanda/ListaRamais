@@ -307,6 +307,7 @@ function HistoryModal({ onClose }) {
     setor_criado: 'Setor Criado', setor_editado: 'Setor Renomeado',
     setor_ativado: 'Setor Ativado', setor_inativado: 'Setor Desativado',
     marcado_grupo: 'Marcado como Grupo', desmarcado_grupo: 'Desmarcado como Grupo',
+    realocado: 'Realocação automática',
   };
   const ACTION_CLS = {
     criado: 'adm-hist-badge--new', editado: 'adm-hist-badge--edit',
@@ -314,10 +315,11 @@ function HistoryModal({ onClose }) {
     setor_criado: 'adm-hist-badge--new', setor_editado: 'adm-hist-badge--edit',
     setor_ativado: 'adm-hist-badge--on', setor_inativado: 'adm-hist-badge--off',
     marcado_grupo: 'adm-hist-badge--edit', desmarcado_grupo: 'adm-hist-badge--edit',
+    realocado: 'adm-hist-badge--edit',
   };
-  const FIELD_LABEL = { sector: 'Setor', role: 'Cargo', names: 'Nomes', ext: 'Ramal', nome: 'Nome', grupo: 'Grupo' };
+  const FIELD_LABEL = { sector: 'Setor', role: 'Cargo', names: 'Nomes', ext: 'Ramal', nome: 'Nome', grupo: 'Grupo', pendente: 'Pendente' };
   function fmtVal(k, v) {
-    if (k === 'grupo') return v ? 'Sim' : 'Não';
+    if (k === 'grupo' || k === 'pendente') return v ? 'Sim' : 'Não';
     return v || '—';
   }
 
@@ -395,7 +397,7 @@ function HistoryModal({ onClose }) {
                 <span className="adm-hist-by">{h.by}</span>
                 <span className="adm-hist-at">{fmtDate(h.at)}</span>
               </div>
-              {(h.action === 'editado' || h.action === 'setor_editado' || h.action === 'marcado_grupo' || h.action === 'desmarcado_grupo') && renderDiff(h.before, h.after)}
+              {(h.action === 'editado' || h.action === 'setor_editado' || h.action === 'marcado_grupo' || h.action === 'desmarcado_grupo' || h.action === 'realocado') && renderDiff(h.before, h.after)}
             </div>
           ))}
         </div>
@@ -534,6 +536,7 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [allSectors, setAllSectors] = useState(window.GM_DIRECTORY || []);
+  const [chamadosSetores, setChamadosSetores] = useState([]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -553,6 +556,11 @@ function App() {
     fetch("/api/directory")
       .then(r => r.json())
       .then(d => { if (d.ok && d.sectors && d.sectors.length) setAllSectors(d.sectors); })
+      .catch(() => {});
+
+    fetch("/api/setores")
+      .then(r => r.json())
+      .then(d => setChamadosSetores(d.setores || []))
       .catch(() => {});
   }, []);
 
@@ -599,18 +607,49 @@ function App() {
   const filtered = useMemo(() => {
     const q = plainNorm(query.trim());
     return publicSectors
-      .filter((s) => sector === "all" || s.sector === sector)
-      .map((s) => q ? { ...s, entries: s.entries.filter((e) => match(e, s, q)) } : s)
+      .filter((s) => {
+        if (sector === "all") return true;
+        if (sector === "__pendente") return s.entries.some(e => e.pendente);
+        return s.sector === sector;
+      })
+      .map((s) => {
+        let entries = s.entries;
+        if (sector === "__pendente") entries = entries.filter(e => e.pendente);
+        if (q) entries = entries.filter((e) => match(e, s, q));
+        return { ...s, entries };
+      })
       .filter((s) => s.entries.length > 0);
   }, [publicSectors, query, sector]);
 
   const shown = useMemo(() => filtered.reduce((n, s) => n + s.entries.length, 0), [filtered]);
+
+  const chipList = useMemo(() => {
+    const q = plainNorm(query.trim());
+    const matchEntry = (e, s) => !q || match(e, s, q);
+    const hasGrupos = publicSectors.some(s => s.sector === 'Grupos de Transferência' && s.entries.some(matchEntry));
+    let pendCount = 0;
+    publicSectors.forEach(s => s.entries.forEach(e => { if (e.pendente && matchEntry(e, s)) pendCount++; }));
+    const setores = chamadosSetores
+      .filter(s => s.name !== 'Grupos de Transferência')
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt'))
+      .map(s => ({ sector: s.name, short: s.name }));
+    const out = [...setores];
+    if (hasGrupos) out.push({ sector: 'Grupos de Transferência', short: 'Grupos Transferência' });
+    if (pendCount > 0) out.push({ sector: '__pendente', short: 'Pendente' });
+    return out;
+  }, [chamadosSetores, publicSectors, query]);
 
   const counts = useMemo(() => {
     const q = plainNorm(query.trim()); const map = {};
     publicSectors.forEach((s) => {
       map[s.sector] = !q ? s.entries.length : s.entries.filter((e) => match(e, s, q)).length;
     });
+    let pendCount = 0;
+    publicSectors.forEach(s => s.entries.forEach(e => {
+      if (e.pendente && (!q || match(e, s, q))) pendCount++;
+    }));
+    map.__pendente = pendCount;
     return map;
   }, [publicSectors, query]);
 
@@ -627,7 +666,7 @@ function App() {
       />
       <main className="gm-main">
         <GMChrome.Hero query={query} onQuery={setQuery} shown={shown} onClear={clear} />
-        <GMChrome.SectorChips sectors={publicSectors} active={sector} onPick={setSector} counts={counts} />
+        <GMChrome.SectorChips sectors={chipList} active={sector} onPick={setSector} counts={counts} />
         <div className="gm-results">
           {filtered.length === 0
             ? <EmptyState query={query} onClear={clear} />

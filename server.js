@@ -152,7 +152,7 @@ app.post('/api/directory', requireAdmin, (req, res) => {
   }
   const newEntry = isGrupo
     ? { id, role: '', names: names || '', ext, active: true, grupo: true }
-    : { id, role, names: names || '', ext, active: true, grupo: false };
+    : { id, role, names: names || '', ext, active: true, grupo: false, pendente: false };
   sec.entries.push(newEntry);
   saveDir(data);
   pushHist(id, 'criado', req.hubUser, null,
@@ -192,7 +192,7 @@ app.put('/api/directory/:id', requireAdmin, (req, res) => {
   }
   const updated = isGrupo
     ? { id: entry.id, role: '', names: names || '', ext, active: entry.active, grupo: true }
-    : { id: entry.id, role, names: names || '', ext, active: entry.active, grupo: false };
+    : { id: entry.id, role, names: names || '', ext, active: entry.active, grupo: false, pendente: false };
   targetSec.entries.push(updated);
   saveDir(data);
   const fieldsChanged =
@@ -235,7 +235,9 @@ app.get('/api/directory/:id/history', requireAdmin, (req, res) => {
 });
 
 const _setoresCache = { data: null, at: 0 };
+const _usuariosCache = { data: null, at: 0 };
 const SETORES_URL = 'https://sistema-chamados-granmarquise.fly.dev/api/setores';
+const USUARIOS_URL = 'https://sistema-chamados-granmarquise.fly.dev/api/hub/usuarios';
 const SETORES_TTL = 5 * 60 * 1000;
 
 app.get('/api/setores', async (_req, res) => {
@@ -256,6 +258,26 @@ app.get('/api/setores', async (_req, res) => {
     if (_setoresCache.data)
       return res.json({ ok: true, setores: _setoresCache.data, stale: true });
     res.json({ ok: true, setores: [], stale: true });
+  }
+});
+
+app.get('/api/usuarios', requireAdmin, async (_req, res) => {
+  const now = Date.now();
+  if (_usuariosCache.data && now - _usuariosCache.at < SETORES_TTL)
+    return res.json({ ok: true, users: _usuariosCache.data, stale: false });
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 4000);
+    const r = await fetch(USUARIOS_URL, { headers: { Authorization: `Bearer ${SSO_SECRET}` }, signal: ac.signal });
+    clearTimeout(timer);
+    const d = await r.json();
+    _usuariosCache.data = d.users || [];
+    _usuariosCache.at = now;
+    res.json({ ok: true, users: _usuariosCache.data, stale: false });
+  } catch {
+    if (_usuariosCache.data)
+      return res.json({ ok: true, users: _usuariosCache.data, stale: true });
+    res.json({ ok: true, users: [], stale: true });
   }
 });
 

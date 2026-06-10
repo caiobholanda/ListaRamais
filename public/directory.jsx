@@ -103,31 +103,85 @@ function EmptyState({ query, onClear }) {
 
 // ── Admin Panel ──────────────────────────────────────────────────────────────
 
+function SectorCombobox({ value, onChange }) {
+  const [setores, setSetores] = useState([]);
+  const [stale, setStale] = useState(false);
+  const [query, setQuery] = useState(value || '');
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const dropRef = useRef(null);
+
+  useEffect(() => {
+    fetch('/api/setores')
+      .then(r => r.json())
+      .then(d => {
+        setSetores((d.setores || []).sort((a, b) => a.name.localeCompare(b.name, 'pt')));
+        setStale(!!d.stale);
+      })
+      .catch(() => {});
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = plainNorm(query.trim());
+    if (!q) return setores;
+    return setores.filter(s => plainNorm(s.name).includes(q));
+  }, [setores, query]);
+
+  function select(name) {
+    setQuery(name); onChange(name); setOpen(false); setActive(-1);
+  }
+
+  function handleKey(e) {
+    if (!open) {
+      if (e.key === 'ArrowDown') { setOpen(true); setActive(0); e.preventDefault(); }
+      return;
+    }
+    if (e.key === 'ArrowDown') { setActive(i => Math.min(i + 1, filtered.length - 1)); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { setActive(i => Math.max(i - 1, 0)); e.preventDefault(); }
+    else if (e.key === 'Enter' && active >= 0) { select(filtered[active].name); e.preventDefault(); }
+    else if (e.key === 'Escape') { setOpen(false); setActive(-1); }
+  }
+
+  useEffect(() => {
+    if (open && active >= 0 && dropRef.current) {
+      const opt = dropRef.current.children[active];
+      if (opt) opt.scrollIntoView({ block: 'nearest' });
+    }
+  }, [active, open]);
+
+  return (
+    <div className="adm-combo">
+      <input
+        className="adm-input"
+        value={query}
+        placeholder="Buscar setor…"
+        autoComplete="off"
+        onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); setActive(-1); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={handleKey}
+      />
+      {stale && <span className="adm-combo__stale">Usando cache (sistema-chamados offline)</span>}
+      {open && filtered.length > 0 && (
+        <div ref={dropRef} className="adm-combo__drop">
+          {filtered.map((s, i) => (
+            <div key={s.id} className={'adm-combo__opt' + (i === active ? ' is-active' : '')}
+              onMouseDown={() => select(s.name)}>
+              {s.name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EntryForm({ entry, sectors, onSave, onCancel }) {
   const [sector, setSector] = useState(entry ? entry.sector : '');
   const [role, setRole] = useState(entry ? entry.role : '');
   const [names, setNames] = useState(entry ? entry.names : '');
   const [ext, setExt] = useState(entry ? entry.ext : '');
   const [saving, setSaving] = useState(false);
-  const [setoresLista, setSetoresLista] = useState([]);
-
-  useEffect(() => {
-    fetch('/api/setores')
-      .then(r => r.json())
-      .then(d => {
-        const lista = (d.setores || []).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
-        setSetoresLista(lista);
-        if (!entry) {
-          const primeiro = lista.find(s => s.active);
-          if (primeiro) setSector(primeiro.name);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const ativos = setoresLista.filter(s => s.active);
-  const currentInList = setoresLista.find(s => s.name === sector);
-  const isDesativado = !!(entry && sector && currentInList && !currentInList.active);
 
   async function handleSave() {
     if (!sector.trim() || !role.trim() || !ext.trim()) return;
@@ -146,11 +200,7 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
         </div>
         <div className="adm-modal__body">
           <label className="adm-label">Setor *</label>
-          <select className="adm-input adm-input--select" value={sector} onChange={e => setSector(e.target.value)}>
-            {isDesativado && <option value={sector}>{sector} (desativado)</option>}
-            {ativos.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-            {ativos.length === 0 && !isDesativado && <option value="">Nenhum setor ativo</option>}
-          </select>
+          <SectorCombobox value={sector} onChange={setSector} />
 
           <label className="adm-label">Cargo / Função *</label>
           <input className="adm-input" value={role} onChange={e => setRole(e.target.value)}
@@ -170,127 +220,6 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
             disabled={saving || !sector.trim() || !role.trim() || !ext.trim()}>
             {saving ? 'Salvando…' : 'Salvar'}
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SetoresModal({ onClose }) {
-  const [setores, setSetores] = useState(null);
-  const [editId, setEditId] = useState(null);
-  const [editName, setEditName] = useState('');
-  const [novoNome, setNovoNome] = useState('');
-  const [erro, setErro] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  async function recarregar() {
-    try {
-      const d = await fetch('/api/setores').then(r => r.json());
-      setSetores((d.setores || []).sort((a, b) => a.name.localeCompare(b.name, 'pt')));
-    } catch { setSetores([]); }
-  }
-
-  useEffect(() => { recarregar(); }, []);
-
-  async function handleAdicionar() {
-    const nome = novoNome.trim();
-    if (!nome) return;
-    setErro(''); setSaving(true);
-    try {
-      const r = await fetch('/api/setores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: nome }) });
-      const d = await r.json();
-      if (!r.ok) { setErro(d.erro || 'Erro'); } else { setNovoNome(''); await recarregar(); }
-    } catch { setErro('Erro de conexão'); }
-    setSaving(false);
-  }
-
-  async function handleEditar(id) {
-    const nome = editName.trim();
-    if (!nome) return;
-    setErro(''); setSaving(true);
-    try {
-      const r = await fetch(`/api/setores/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: nome }) });
-      const d = await r.json();
-      if (!r.ok) { setErro(d.erro || 'Erro'); } else { setEditId(null); setEditName(''); await recarregar(); }
-    } catch { setErro('Erro de conexão'); }
-    setSaving(false);
-  }
-
-  async function handleToggle(id) {
-    try { await fetch(`/api/setores/${id}/toggle`, { method: 'PATCH' }); await recarregar(); } catch {}
-  }
-
-  return (
-    <div className="adm-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="adm-modal adm-modal--setores">
-        <div className="adm-modal__header">
-          <span>Gerenciar Setores</span>
-          <button className="adm-close-sm" onClick={onClose} aria-label="Fechar"><IconClose size="16" /></button>
-        </div>
-        <div className="adm-setores-body">
-          {setores === null ? (
-            <p className="adm-hist-empty">Carregando…</p>
-          ) : setores.length === 0 ? (
-            <p className="adm-hist-empty">Nenhum setor cadastrado ainda.</p>
-          ) : setores.map(s => (
-            <div key={s.id} className={'adm-setor-row' + (!s.active ? ' adm-row--off' : '')}>
-              {editId === s.id ? (
-                <input
-                  className="adm-input"
-                  style={{ flex: 1 }}
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') handleEditar(s.id);
-                    if (e.key === 'Escape') { setEditId(null); setEditName(''); }
-                  }}
-                  autoFocus
-                />
-              ) : (
-                <span className="adm-setor-name">
-                  {s.name}
-                  {!s.active && <span className="adm-badge adm-badge--off" style={{ marginLeft: '8px' }}>Desativado</span>}
-                </span>
-              )}
-              <span className="adm-setor-actions">
-                {editId === s.id ? (
-                  <>
-                    <button className="adm-btn adm-btn--ghost" style={{ padding: '5px 10px' }}
-                      onClick={() => { setEditId(null); setEditName(''); setErro(''); }}>Cancelar</button>
-                    <button className="adm-btn adm-btn--gold" style={{ padding: '5px 10px' }}
-                      onClick={() => handleEditar(s.id)} disabled={saving || !editName.trim()}>Salvar</button>
-                  </>
-                ) : (
-                  <>
-                    <button className="adm-act" title="Renomear"
-                      onClick={() => { setEditId(s.id); setEditName(s.name); setErro(''); }}>
-                      <IconEdit size="14" sw="1.8" />
-                    </button>
-                    <button className={'adm-act adm-act--toggle' + (s.active ? ' is-on' : '')}
-                      title={s.active ? 'Desativar' : 'Ativar'} onClick={() => handleToggle(s.id)}>
-                      <span className="adm-toggle-pill" />
-                    </button>
-                  </>
-                )}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="adm-setores-add">
-          {erro && <p style={{ color: 'var(--err,#dc2626)', fontSize: '0.8rem', marginBottom: '8px' }}>{erro}</p>}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input
-              className="adm-input"
-              style={{ flex: 1 }}
-              placeholder="Nome do novo setor"
-              value={novoNome}
-              onChange={e => { setNovoNome(e.target.value); setErro(''); }}
-              onKeyDown={e => e.key === 'Enter' && handleAdicionar()}
-            />
-            <button className="adm-btn adm-btn--gold" onClick={handleAdicionar}
-              disabled={saving || !novoNome.trim()}>Adicionar</button>
-          </div>
         </div>
       </div>
     </div>
@@ -400,13 +329,12 @@ function HistoryModal({ onClose }) {
   );
 }
 
-function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle, onRefreshDir }) {
+function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editEntry, setEditEntry] = useState(null);
   const [filterSector, setFilterSector] = useState("all");
   const [filterText, setFilterText] = useState("");
   const [showHist, setShowHist] = useState(false);
-  const [showSetores, setShowSetores] = useState(false);
 
   const allEntries = useMemo(() =>
     sectors.flatMap(s => s.entries.map(e => ({ ...e, sector: s.sector, short: s.short }))),
@@ -427,9 +355,6 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle, onRefreshDir })
         <div className="adm-panel__header">
           <button className="adm-close-sm" onClick={onClose} aria-label="Fechar"><IconClose size="18" /></button>
           <span className="adm-title">Gerenciar Diretório</span>
-          <button className="adm-hist-btn" onClick={() => setShowSetores(true)}>
-            <IconTag size="13" sw="1.8" /> Setor
-          </button>
           <button className="adm-hist-btn" onClick={() => setShowHist(true)}>
             <IconHistory size="13" sw="1.8" /> Histórico
           </button>
@@ -505,7 +430,6 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle, onRefreshDir })
       )}
 
       {showHist && <HistoryModal onClose={() => setShowHist(false)} />}
-      {showSetores && <SetoresModal onClose={() => { setShowSetores(false); onRefreshDir?.(); }} />}
     </>
   );
 }
@@ -620,7 +544,6 @@ function App() {
           onAdd={handleAdd}
           onEdit={handleEdit}
           onToggle={handleToggle}
-          onRefreshDir={reloadDir}
         />
       )}
     </div>

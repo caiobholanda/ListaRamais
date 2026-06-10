@@ -81,6 +81,13 @@ function Entry({ item, query }) {
 
 function slug(s) { return plainNorm(s).replace(/[^a-z0-9]+/g, "-"); }
 
+const DISPLAY_ALIAS = {
+  'Tecnologia da Informação': 'Tecnologia da Informação (TI)',
+  'Recursos Humanos': 'Recursos Humanos (RH)',
+  "Spa by L'Occitane": "Spa by L'Occitane (SPA)",
+};
+function displayName(s) { return DISPLAY_ALIAS[s] || s; }
+
 function Section({ data, query, index }) {
   return (
     <section className="gm-section" aria-labelledby={"sec-" + slug(data.sector)}>
@@ -88,7 +95,7 @@ function Section({ data, query, index }) {
         <span className="gm-section__idx" aria-hidden="true">{String(index).padStart(2, "0")}</span>
         <h2 className="gm-section__title" id={"sec-" + slug(data.sector)}>
           <span className="gm-section__ic" aria-hidden="true"><SectorIcon sector={data.sector} size="18" /></span>
-          <em>{data.sector}</em>
+          <em>{displayName(data.sector)}</em>
         </h2>
         <span className="gm-section__rule" aria-hidden="true" />
         <span className="gm-section__count">{String(data.entries.length).padStart(2, "0")}</span>
@@ -636,7 +643,7 @@ function App() {
       .filter(s => s.name !== 'Grupos de Transferência')
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name, 'pt'))
-      .map(s => ({ sector: s.name, short: s.name }));
+      .map(s => ({ sector: s.name, short: displayName(s.name) }));
     const out = [...setores];
     if (hasGrupos) out.push({ sector: 'Grupos de Transferência', short: 'Grupos Transferência' });
     if (pendCount > 0) out.push({ sector: '__pendente', short: 'Pendente' });

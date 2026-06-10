@@ -26,6 +26,7 @@ function isAdminEmail(email) {
 const DATA_DIR = '/data';
 const DATA_FILE = path.join(DATA_DIR, 'directory.json');
 const HIST_FILE = path.join(DATA_DIR, 'history.json');
+const SETORES_FILE = path.join(DATA_DIR, 'setores.json');
 
 app.use(cookieParser());
 app.use(express.json());
@@ -48,9 +49,39 @@ function loadHist() {
 
 function pushHist(entryId, action, user, before, after, ctx) {
   const h = loadHist();
-  h.push({ entryId, action, role: ctx?.role || '', sector: ctx?.sector || '', by: user.nome || user.email || 'admin', email: user.email || '', at: new Date().toISOString(), before: before || null, after: after || null });
+  const item = { entryId, action, role: ctx?.role || '', sector: ctx?.sector || '', by: user.nome || user.email || 'admin', email: user.email || '', at: new Date().toISOString(), before: before || null, after: after || null };
+  if (ctx?.tipo) item.tipo = ctx.tipo;
+  h.push(item);
   fs.writeFileSync(HIST_FILE, JSON.stringify(h, null, 2), 'utf8');
 }
+
+function loadSetores() {
+  if (!fs.existsSync(SETORES_FILE)) return [];
+  try { return JSON.parse(fs.readFileSync(SETORES_FILE, 'utf8')); } catch { return []; }
+}
+function saveSetores(data) {
+  fs.writeFileSync(SETORES_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+function nextSetorId(setores) {
+  return setores.length ? Math.max(...setores.map(s => s.id)) + 1 : 1;
+}
+function normalizeStr(str) {
+  return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+function migrarSetores() {
+  if (fs.existsSync(SETORES_FILE)) return;
+  const dir = loadDir();
+  const seen = new Set();
+  const setores = [];
+  let id = 1;
+  for (const sec of dir) {
+    const key = normalizeStr(sec.sector);
+    if (!seen.has(key)) { seen.add(key); setores.push({ id: id++, name: sec.sector, active: true }); }
+  }
+  setores.sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+  saveSetores(setores);
+}
+migrarSetores();
 
 function nextId(data) {
   let max = 0;
@@ -148,6 +179,60 @@ app.get('/api/directory/:id/history', requireAdmin, (req, res) => {
   const id = parseInt(req.params.id);
   const history = loadHist().filter(h => h.entryId === id).reverse();
   res.json({ ok: true, history });
+});
+
+app.get('/api/setores', (_req, res) => {
+  res.json({ ok: true, setores: loadSetores() });
+});
+
+app.post('/api/setores', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ ok: false, erro: 'Nome obrigatório' });
+  const setores = loadSetores();
+  const norm = normalizeStr(name.trim());
+  if (setores.some(s => normalizeStr(s.name) === norm))
+    return res.status(409).json({ ok: false, erro: 'Setor já existe' });
+  const id = nextSetorId(setores);
+  setores.push({ id, name: name.trim(), active: true });
+  saveSetores(setores);
+  pushHist(null, 'setor_criado', req.hubUser, null, { nome: name.trim() }, { role: name.trim(), tipo: 'setor' });
+  res.status(201).json({ ok: true, id });
+});
+
+app.put('/api/setores/:id', requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id);
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ ok: false, erro: 'Nome obrigatório' });
+  const setores = loadSetores();
+  const setor = setores.find(s => s.id === id);
+  if (!setor) return res.status(404).json({ ok: false, erro: 'Não encontrado' });
+  const norm = normalizeStr(name.trim());
+  if (setores.some(s => s.id !== id && normalizeStr(s.name) === norm))
+    return res.status(409).json({ ok: false, erro: 'Setor já existe' });
+  const oldName = setor.name;
+  setor.name = name.trim();
+  saveSetores(setores);
+  const dir = loadDir();
+  for (const sec of dir) {
+    if (sec.sector === oldName) {
+      if (sec.short === oldName) sec.short = name.trim();
+      sec.sector = name.trim();
+    }
+  }
+  saveDir(dir);
+  pushHist(null, 'setor_editado', req.hubUser, { nome: oldName }, { nome: name.trim() }, { role: name.trim(), tipo: 'setor' });
+  res.json({ ok: true });
+});
+
+app.patch('/api/setores/:id/toggle', requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id);
+  const setores = loadSetores();
+  const setor = setores.find(s => s.id === id);
+  if (!setor) return res.status(404).json({ ok: false, erro: 'Não encontrado' });
+  setor.active = !setor.active;
+  saveSetores(setores);
+  pushHist(null, setor.active ? 'setor_ativado' : 'setor_inativado', req.hubUser, { ativo: !setor.active }, { ativo: setor.active }, { role: setor.name, tipo: 'setor' });
+  res.json({ ok: true, active: setor.active });
 });
 
 app.use(express.static(path.join(__dirname, 'public')));

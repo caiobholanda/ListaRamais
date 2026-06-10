@@ -54,11 +54,12 @@ const IconGear = (p) => <Svg {...p}><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"
 const IconEdit = (p) => <Svg {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></Svg>;
 const IconPlus = (p) => <Svg {...p}><path d="M12 5v14M5 12h14"/></Svg>;
 const IconHistory = (p) => <Svg {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></Svg>;
+const IconTag = (p) => <Svg {...p}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></Svg>;
 
 Object.assign(window, {
   IconSun, IconMoon, IconSearch, IconClose, IconPhone, IconStar,
   IconBriefcase, IconUsers, IconShield, IconWrench, IconBed, IconUtensils,
   IconCart, IconGlass, IconCalendar, IconChef, IconDots, IconCopy, IconCheck,
-  IconGear, IconEdit, IconPlus, IconHistory,
+  IconGear, IconEdit, IconPlus, IconHistory, IconTag,
   SectorIcon,
 });

@@ -289,13 +289,18 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
 function HistoryModal({ onClose }) {
   const [history, setHistory] = useState(null);
   const [filterDate, setFilterDate] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  function carregar() {
+    setLoading(true);
     fetch('/api/directory/history')
       .then(r => r.json())
       .then(d => setHistory(d.history || []))
-      .catch(() => setHistory([]));
-  }, []);
+      .catch(() => setHistory([]))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { carregar(); }, []);
 
   const ACTION_LABEL = {
     criado: 'Criado', editado: 'Editado', ativado: 'Ativado', inativado: 'Inativado',
@@ -367,6 +372,10 @@ function HistoryModal({ onClose }) {
               ×  Limpar
             </button>
           )}
+          <button className="adm-btn adm-btn--ghost adm-hist-clear-btn" onClick={carregar}
+            disabled={loading} style={{ marginLeft: 'auto' }}>
+            {loading ? '…' : '↻ Atualizar'}
+          </button>
         </div>
         <div className="adm-hist-body">
           {filtered === null ? (
@@ -386,7 +395,7 @@ function HistoryModal({ onClose }) {
                 <span className="adm-hist-by">{h.by}</span>
                 <span className="adm-hist-at">{fmtDate(h.at)}</span>
               </div>
-              {(h.action === 'editado' || h.action === 'setor_editado') && renderDiff(h.before, h.after)}
+              {(h.action === 'editado' || h.action === 'setor_editado' || h.action === 'marcado_grupo' || h.action === 'desmarcado_grupo') && renderDiff(h.before, h.after)}
             </div>
           ))}
         </div>
@@ -401,12 +410,14 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
   const [filterSector, setFilterSector] = useState("all");
   const [filterText, setFilterText] = useState("");
   const [showHist, setShowHist] = useState(false);
+  const [histKey, setHistKey] = useState(0);
   const [toast, setToast] = useState('');
 
   function notify(msg) {
     setToast(msg);
     setTimeout(() => setToast(''), 2500);
   }
+  function bumpHist() { setHistKey(k => k + 1); }
 
   const allEntries = useMemo(() =>
     sectors.flatMap(s => s.entries.map(e => ({ ...e, sector: s.sector, short: s.short }))),
@@ -481,7 +492,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
                 </button>
                 <button className={"adm-act adm-act--toggle" + (entry.active !== false ? " is-on" : "")}
                   title={entry.active !== false ? "Desativar" : "Ativar"}
-                  onClick={() => onToggle(entry.id)}>
+                  onClick={async () => { await onToggle(entry.id); bumpHist(); }}>
                   <span className="adm-toggle-pill" />
                 </button>
               </span>
@@ -499,6 +510,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
             if (result && result.ok) {
               setFormOpen(false);
               notify(editEntry ? 'Ramal atualizado.' : 'Ramal adicionado.');
+              bumpHist();
             }
             return result;
           }}
@@ -506,7 +518,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
         />
       )}
 
-      {showHist && <HistoryModal onClose={() => setShowHist(false)} />}
+      {showHist && <HistoryModal key={histKey} onClose={() => setShowHist(false)} />}
       {toast && <div className="adm-toast">{toast}</div>}
     </>
   );

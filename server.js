@@ -68,6 +68,19 @@ function initFromSeed() {
 }
 initFromSeed();
 
+function migrarGrupoShort() {
+  if (!fs.existsSync(DATA_FILE)) return;
+  const data = loadDir();
+  let changed = false;
+  for (const sec of data) {
+    if (sec.sector === 'Grupos de Transferência' && sec.short !== 'Grupos Transferência') {
+      sec.short = 'Grupos Transferência';
+      changed = true;
+    }
+  }
+  if (changed) saveDir(data);
+}
+migrarGrupoShort();
 
 function nextId(data) {
   let max = 0;
@@ -117,7 +130,7 @@ app.get('/api/directory', (_req, res) => {
 });
 
 const GRUPO_SECTOR = 'Grupos de Transferência';
-const GRUPO_SHORT = 'Grupos';
+const GRUPO_SHORT = 'Grupos Transferência';
 
 app.post('/api/directory', requireAdmin, (req, res) => {
   const { sector, short, role, names, ext, grupo } = req.body;

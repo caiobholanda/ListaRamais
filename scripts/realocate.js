@@ -26,6 +26,7 @@ function normalizeSetor(raw, canonical) {
     'a&b': 'A&B',
     'nutricao': 'Nutrição',
     'comercial': 'Comercial / Vendas',
+    'rh': 'Recursos Humanos',
     'almoxarifado': 'Compras / Almoxarifado',
     'eventos sociais': 'Eventos e Convenções',
     'engenharia': 'Manutenção',

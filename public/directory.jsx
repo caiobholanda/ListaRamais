@@ -44,16 +44,26 @@ function Entry({ item, query }) {
   const compact = item.ext.replace(/\s/g, "");
   const isToll = /^0800/.test(compact);
   const isLong = compact.length > 6;
+  const isGrupo = !!item.grupo;
   return (
     <article className="gm-row">
       <div className="gm-row__body">
-        <h3 className="gm-row__role"><Highlight text={item.role} query={query} /></h3>
-        {item.names ? (
-          <p className="gm-row__names"><Highlight text={item.names} query={query} /></p>
+        {isGrupo ? (
+          <>
+            <h3 className="gm-row__role"><Highlight text={item.names || `Ramal ${item.ext}`} query={query} /></h3>
+            <p className="gm-row__names gm-row__names--grupo">Grupo de Transferência</p>
+          </>
         ) : (
-          <p className="gm-row__names gm-row__names--empty">
-            {isToll ? "Discagem gratuita" : "Ramal de setor"}
-          </p>
+          <>
+            <h3 className="gm-row__role"><Highlight text={item.role} query={query} /></h3>
+            {item.names ? (
+              <p className="gm-row__names"><Highlight text={item.names} query={query} /></p>
+            ) : (
+              <p className="gm-row__names gm-row__names--empty">
+                {isToll ? "Discagem gratuita" : "Ramal de setor"}
+              </p>
+            )}
+          </>
         )}
       </div>
       <div className="gm-row__ext">
@@ -177,17 +187,26 @@ function SectorCombobox({ value, onChange }) {
 }
 
 function EntryForm({ entry, sectors, onSave, onCancel }) {
-  const [sector, setSector] = useState(entry ? entry.sector : '');
-  const [role, setRole] = useState(entry ? entry.role : '');
+  const [grupo, setGrupo] = useState(entry ? !!entry.grupo : false);
+  const [sector, setSector] = useState(entry && !entry.grupo ? entry.sector : '');
+  const [role, setRole] = useState(entry && !entry.grupo ? entry.role : '');
   const [names, setNames] = useState(entry ? entry.names : '');
   const [ext, setExt] = useState(entry ? entry.ext : '');
   const [saving, setSaving] = useState(false);
 
+  const isValid = grupo
+    ? !!ext.trim()
+    : !!(sector.trim() && role.trim() && ext.trim());
+
   async function handleSave() {
-    if (!sector.trim() || !role.trim() || !ext.trim()) return;
+    if (!isValid) return;
     setSaving(true);
-    const short = sectors.find(s => s.sector === sector)?.short || sector.split(/[\s/]/)[0];
-    await onSave({ sector: sector.trim(), short, role: role.trim(), names: names.trim(), ext: ext.trim() });
+    if (grupo) {
+      await onSave({ grupo: true, names: names.trim(), ext: ext.trim() });
+    } else {
+      const short = sectors.find(s => s.sector === sector)?.short || sector.split(/[\s/]/)[0];
+      await onSave({ grupo: false, sector: sector.trim(), short, role: role.trim(), names: names.trim(), ext: ext.trim() });
+    }
     setSaving(false);
   }
 
@@ -199,16 +218,30 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
           <button className="adm-close-sm" onClick={onCancel} aria-label="Fechar"><IconClose size="16" /></button>
         </div>
         <div className="adm-modal__body">
-          <label className="adm-label">Setor *</label>
-          <SectorCombobox value={sector} onChange={setSector} />
+          <label className="adm-checkbox-row">
+            <input type="checkbox" checked={grupo}
+              onChange={e => {
+                const v = e.target.checked;
+                setGrupo(v);
+                if (v) { setSector(''); setRole(''); }
+              }} />
+            <span>Grupo de Transferência</span>
+          </label>
 
-          <label className="adm-label">Cargo / Função *</label>
-          <input className="adm-input" value={role} onChange={e => setRole(e.target.value)}
-            placeholder="Ex: Gerente de Recepção" />
+          {!grupo && (
+            <>
+              <label className="adm-label">Setor *</label>
+              <SectorCombobox value={sector} onChange={setSector} />
 
-          <label className="adm-label">Nomes</label>
+              <label className="adm-label">Cargo / Função *</label>
+              <input className="adm-input" value={role} onChange={e => setRole(e.target.value)}
+                placeholder="Ex: Gerente de Recepção" />
+            </>
+          )}
+
+          <label className="adm-label">{grupo ? 'Nome do Grupo' : 'Nomes'}</label>
           <input className="adm-input" value={names} onChange={e => setNames(e.target.value)}
-            placeholder="Ex: João Silva / Maria Santos" />
+            placeholder={grupo ? 'Ex: Recepção Geral' : 'Ex: João Silva / Maria Santos'} />
 
           <label className="adm-label">Ramal / Número *</label>
           <input className="adm-input" value={ext} onChange={e => setExt(e.target.value)}
@@ -217,7 +250,7 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
         <div className="adm-modal__footer">
           <button className="adm-btn adm-btn--ghost" onClick={onCancel}>Cancelar</button>
           <button className="adm-btn adm-btn--gold" onClick={handleSave}
-            disabled={saving || !sector.trim() || !role.trim() || !ext.trim()}>
+            disabled={saving || !isValid}>
             {saving ? 'Salvando…' : 'Salvar'}
           </button>
         </div>
@@ -241,14 +274,20 @@ function HistoryModal({ onClose }) {
     criado: 'Criado', editado: 'Editado', ativado: 'Ativado', inativado: 'Inativado',
     setor_criado: 'Setor Criado', setor_editado: 'Setor Renomeado',
     setor_ativado: 'Setor Ativado', setor_inativado: 'Setor Desativado',
+    marcado_grupo: 'Marcado como Grupo', desmarcado_grupo: 'Desmarcado como Grupo',
   };
   const ACTION_CLS = {
     criado: 'adm-hist-badge--new', editado: 'adm-hist-badge--edit',
     ativado: 'adm-hist-badge--on', inativado: 'adm-hist-badge--off',
     setor_criado: 'adm-hist-badge--new', setor_editado: 'adm-hist-badge--edit',
     setor_ativado: 'adm-hist-badge--on', setor_inativado: 'adm-hist-badge--off',
+    marcado_grupo: 'adm-hist-badge--edit', desmarcado_grupo: 'adm-hist-badge--edit',
   };
-  const FIELD_LABEL = { sector: 'Setor', role: 'Cargo', names: 'Nomes', ext: 'Ramal', nome: 'Nome' };
+  const FIELD_LABEL = { sector: 'Setor', role: 'Cargo', names: 'Nomes', ext: 'Ramal', nome: 'Nome', grupo: 'Grupo' };
+  function fmtVal(k, v) {
+    if (k === 'grupo') return v ? 'Sim' : 'Não';
+    return v || '—';
+  }
 
   function fmtDate(iso) {
     return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -261,16 +300,16 @@ function HistoryModal({ onClose }) {
 
   function renderDiff(before, after) {
     if (!before || !after) return null;
-    const changed = Object.keys(FIELD_LABEL).filter(k => before[k] !== after[k]);
+    const changed = Object.keys(FIELD_LABEL).filter(k => (before[k] ?? (k === 'grupo' ? false : '')) !== (after[k] ?? (k === 'grupo' ? false : '')));
     if (!changed.length) return <span className="adm-hist-nodiff">Sem alterações nos campos.</span>;
     return (
       <div className="adm-hist-diff">
         {changed.map(k => (
           <div key={k} className="adm-hist-diff-row">
             <span className="adm-hist-diff-field">{FIELD_LABEL[k]}</span>
-            <span className="adm-hist-diff-before">{before[k] || '—'}</span>
+            <span className="adm-hist-diff-before">{fmtVal(k, before[k])}</span>
             <span className="adm-hist-diff-arrow">→</span>
-            <span className="adm-hist-diff-after">{after[k] || '—'}</span>
+            <span className="adm-hist-diff-after">{fmtVal(k, after[k])}</span>
           </div>
         ))}
       </div>
@@ -392,7 +431,9 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
           {visible.map(entry => (
             <div key={entry.id} className={"adm-row" + (entry.active === false ? " adm-row--off" : "")}>
               <span className="adm-cell adm-cell--sec" title={entry.sector}>{entry.short}</span>
-              <span className="adm-cell adm-cell--role">{entry.role}</span>
+              <span className="adm-cell adm-cell--role">
+                {entry.grupo ? <span className="adm-grupo-tag">Grupo de Transferência</span> : entry.role}
+              </span>
               <span className="adm-cell adm-cell--names">{entry.names || <em className="adm-empty">—</em>}</span>
               <span className="adm-cell adm-cell--ext">{entry.ext}</span>
               <span className="adm-cell">

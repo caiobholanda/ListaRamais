@@ -114,23 +114,50 @@ app.get('/api/directory', (_req, res) => {
   res.json({ ok: true, sectors: loadDir() });
 });
 
+const GRUPO_SECTOR = 'Grupos de Transferência';
+const GRUPO_SHORT = 'Grupos';
+
 app.post('/api/directory', requireAdmin, (req, res) => {
-  const { sector, short, role, names, ext } = req.body;
-  if (!sector || !role || !ext) return res.status(400).json({ ok: false, erro: 'sector, role e ext são obrigatórios' });
+  const { sector, short, role, names, ext, grupo } = req.body;
+  const isGrupo = !!grupo;
+  if (isGrupo) {
+    if (!ext) return res.status(400).json({ ok: false, erro: 'ext obrigatório' });
+  } else {
+    if (!sector || !role || !ext) return res.status(400).json({ ok: false, erro: 'sector, role e ext são obrigatórios' });
+  }
   const data = loadDir();
   const id = nextId(data);
-  let sec = data.find(s => s.sector === sector);
-  if (!sec) { sec = { sector, short: short || sector, entries: [] }; data.push(sec); }
-  sec.entries.push({ id, role, names: names || '', ext, active: true });
+  let sec;
+  if (isGrupo) {
+    sec = data.find(s => s.sector === GRUPO_SECTOR);
+    if (!sec) { sec = { sector: GRUPO_SECTOR, short: GRUPO_SHORT, entries: [] }; data.push(sec); }
+  } else {
+    sec = data.find(s => s.sector === sector);
+    if (!sec) { sec = { sector, short: short || sector, entries: [] }; data.push(sec); }
+  }
+  const newEntry = isGrupo
+    ? { id, role: '', names: names || '', ext, active: true, grupo: true }
+    : { id, role, names: names || '', ext, active: true, grupo: false };
+  sec.entries.push(newEntry);
   saveDir(data);
-  pushHist(id, 'criado', req.hubUser, null, { sector, role, names: names || '', ext }, { role, sector });
+  pushHist(id, 'criado', req.hubUser, null,
+    isGrupo
+      ? { sector: GRUPO_SECTOR, role: '', names: names || '', ext, grupo: true }
+      : { sector, role, names: names || '', ext, grupo: false },
+    { role: isGrupo ? (names || `Ramal ${ext}`) : role, sector: isGrupo ? GRUPO_SECTOR : sector }
+  );
   res.status(201).json({ ok: true, id });
 });
 
 app.put('/api/directory/:id', requireAdmin, (req, res) => {
   const id = parseInt(req.params.id);
-  const { sector, short, role, names, ext } = req.body;
-  if (!role || !ext) return res.status(400).json({ ok: false, erro: 'role e ext são obrigatórios' });
+  const { sector, short, role, names, ext, grupo } = req.body;
+  const isGrupo = !!grupo;
+  if (isGrupo) {
+    if (!ext) return res.status(400).json({ ok: false, erro: 'ext obrigatório' });
+  } else {
+    if (!role || !ext) return res.status(400).json({ ok: false, erro: 'role e ext são obrigatórios' });
+  }
   const data = loadDir();
   let entry, oldSector;
   for (const sec of data) {
@@ -138,12 +165,37 @@ app.put('/api/directory/:id', requireAdmin, (req, res) => {
     if (idx !== -1) { oldSector = sec.sector; [entry] = sec.entries.splice(idx, 1); if (!sec.entries.length) data.splice(data.indexOf(sec), 1); break; }
   }
   if (!entry) return res.status(404).json({ ok: false, erro: 'Não encontrado' });
-  let targetSec = data.find(s => s.sector === sector);
-  if (!targetSec) { targetSec = { sector, short: short || sector, entries: [] }; data.push(targetSec); }
-  else if (short) targetSec.short = short;
-  targetSec.entries.push({ ...entry, role, names: names || '', ext });
+  const oldGrupo = !!entry.grupo;
+  let targetSec;
+  if (isGrupo) {
+    targetSec = data.find(s => s.sector === GRUPO_SECTOR);
+    if (!targetSec) { targetSec = { sector: GRUPO_SECTOR, short: GRUPO_SHORT, entries: [] }; data.push(targetSec); }
+  } else {
+    targetSec = data.find(s => s.sector === sector);
+    if (!targetSec) { targetSec = { sector, short: short || sector, entries: [] }; data.push(targetSec); }
+    else if (short) targetSec.short = short;
+  }
+  const updated = isGrupo
+    ? { id: entry.id, role: '', names: names || '', ext, active: entry.active, grupo: true }
+    : { id: entry.id, role, names: names || '', ext, active: entry.active, grupo: false };
+  targetSec.entries.push(updated);
   saveDir(data);
-  pushHist(id, 'editado', req.hubUser, { sector: oldSector, role: entry.role, names: entry.names, ext: entry.ext }, { sector, role, names: names || '', ext }, { role, sector });
+  const fieldsChanged =
+    (entry.names || '') !== (names || '') ||
+    entry.ext !== ext ||
+    (!isGrupo && (sector !== oldSector || entry.role !== role));
+  if (oldGrupo !== isGrupo && !fieldsChanged) {
+    pushHist(id, isGrupo ? 'marcado_grupo' : 'desmarcado_grupo', req.hubUser,
+      { grupo: oldGrupo }, { grupo: isGrupo },
+      { role: isGrupo ? (names || `Ramal ${ext}`) : (role || entry.role), sector: isGrupo ? GRUPO_SECTOR : (sector || oldSector) }
+    );
+  } else {
+    pushHist(id, 'editado', req.hubUser,
+      { sector: oldSector, role: entry.role || '', names: entry.names || '', ext: entry.ext, grupo: oldGrupo },
+      { sector: isGrupo ? GRUPO_SECTOR : sector, role: isGrupo ? '' : role, names: names || '', ext, grupo: isGrupo },
+      { role: isGrupo ? (names || `Ramal ${ext}`) : role, sector: isGrupo ? GRUPO_SECTOR : sector }
+    );
+  }
   res.json({ ok: true });
 });
 

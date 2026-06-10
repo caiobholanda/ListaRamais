@@ -44,6 +44,7 @@ const SECTOR_ICONS = {
   "Vendas / Grupos & Eventos / Reservas": IconCalendar,
   "Banquetes": IconGlass,
   "Diversos / Outros": IconDots,
+  "Grupos de Transferência": IconPhone,
 };
 function SectorIcon({ sector, ...rest }) {
   const C = SECTOR_ICONS[sector] || IconDots;

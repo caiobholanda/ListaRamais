@@ -8,6 +8,21 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SSO_SECRET = process.env.SSO_SECRET || 'dev-sso-secret';
+
+const ADMIN_EMAILS = [
+  'christian.bernard@granmarquise.com.br',
+  'ana.louise@granmarquise.com.br',
+  'kamilly.sousa@granmarquise.com.br',
+  'francisco.rodrigues@granmarquise.com.br',
+  'richard@granmarquise.com.br',
+  'suporte.ti@granmarquise.com.br',
+  'estagio.ti@granmarquise.com.br',
+];
+
+function isAdminEmail(email) {
+  return ADMIN_EMAILS.includes((email || '').trim().toLowerCase());
+}
+
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'directory.json');
 const HIST_FILE = path.join(DATA_DIR, 'history.json');
@@ -64,13 +79,14 @@ app.get('/sso', (req, res) => {
   if (!sso_token) return res.redirect('/');
   try {
     const payload = jwt.verify(sso_token, SSO_SECRET);
+    const tipo = isAdminEmail(payload.email) ? 'admin' : 'usuario';
     const session = jwt.sign(
-      { nome: payload.nome, email: payload.email, tipo: payload.tipo || 'usuario' },
+      { nome: payload.nome, email: payload.email, tipo },
       SSO_SECRET,
       { expiresIn: '8h' }
     );
     res.cookie('hub_session', session, { httpOnly: true, sameSite: 'Strict', maxAge: 8 * 3600 * 1000 });
-    res.cookie('hub_tipo', payload.tipo === 'admin' ? 'admin' : 'usuario', { sameSite: 'Strict', maxAge: 8 * 3600 * 1000 });
+    res.cookie('hub_tipo', tipo, { sameSite: 'Strict', maxAge: 8 * 3600 * 1000 });
     return res.redirect('/');
   } catch {
     return res.redirect('/');

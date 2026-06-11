@@ -218,9 +218,19 @@ app.put('/api/directory/:id', requireAdmin, (req, res) => {
 app.patch('/api/directory/:id/toggle', requireAdmin, (req, res) => {
   const id = parseInt(req.params.id);
   const data = loadDir();
+  // Aceita { active: boolean } no body para evitar dessincronizacao em cliques concorrentes.
+  // Sem body, mantem o comportamento antigo de inverter.
+  const desejado = (req.body && typeof req.body.active === 'boolean') ? req.body.active : null;
   for (const sec of data) {
     const entry = sec.entries.find(e => e.id === id);
-    if (entry) { entry.active = !entry.active; saveDir(data); pushHist(id, entry.active ? 'ativado' : 'inativado', req.hubUser, { active: !entry.active }, { active: entry.active }, { role: entry.role, sector: sec.sector }); return res.json({ ok: true, active: entry.active }); }
+    if (entry) {
+      const anterior = entry.active;
+      entry.active = desejado === null ? !entry.active : desejado;
+      if (entry.active === anterior) return res.json({ ok: true, active: entry.active, noop: true });
+      saveDir(data);
+      pushHist(id, entry.active ? 'ativado' : 'inativado', req.hubUser, { active: anterior }, { active: entry.active }, { role: entry.role, sector: sec.sector });
+      return res.json({ ok: true, active: entry.active });
+    }
   }
   res.status(404).json({ ok: false, erro: 'Não encontrado' });
 });

@@ -129,13 +129,16 @@ function SectorCombobox({ value, onChange }) {
   const dropRef = useRef(null);
 
   useEffect(() => {
-    fetch('/api/setores')
-      .then(r => r.json())
+    const ac = new AbortController();
+    fetch('/api/setores', { signal: ac.signal })
+      .then(r => r.ok ? r.json() : null)
       .then(d => {
+        if (!d) return;
         setSetores((d.setores || []).sort((a, b) => a.name.localeCompare(b.name, 'pt')));
         setStale(!!d.stale);
       })
       .catch(() => {});
+    return () => ac.abort();
   }, []);
 
   const filtered = useMemo(() => {
@@ -298,16 +301,23 @@ function HistoryModal({ onClose }) {
   const [filterDate, setFilterDate] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const fetchAcRef = useRef(null);
   function carregar() {
+    if (fetchAcRef.current) fetchAcRef.current.abort();
+    fetchAcRef.current = new AbortController();
+    const signal = fetchAcRef.current.signal;
     setLoading(true);
-    fetch('/api/directory/history')
-      .then(r => r.json())
-      .then(d => setHistory(d.history || []))
-      .catch(() => setHistory([]))
-      .finally(() => setLoading(false));
+    fetch('/api/directory/history', { signal })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setHistory(d.history || []); else setHistory([]); })
+      .catch(err => { if (err.name !== 'AbortError') setHistory([]); })
+      .finally(() => { setLoading(false); });
   }
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    carregar();
+    return () => { if (fetchAcRef.current) fetchAcRef.current.abort(); };
+  }, []);
 
   // Trava scroll da pagina de tras enquanto o modal esta aberto.
   useEffect(() => {
@@ -465,6 +475,14 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
   const [editEntry, setEditEntry] = useState(null);
   const [filterSector, setFilterSector] = useState("all");
   const [filterText, setFilterText] = useState("");
+  // filterTextDebounced e o que efetivamente alimenta o useMemo: evita refiltrar
+  // os ~100 itens a cada tecla. 300ms e suficiente para parecer instantaneo
+  // sem disparar 5+ renders por palavra.
+  const [filterTextDebounced, setFilterTextDebounced] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setFilterTextDebounced(filterText), 300);
+    return () => clearTimeout(t);
+  }, [filterText]);
   const [showHist, setShowHist] = useState(false);
   const [histKey, setHistKey] = useState(0);
   const [toast, setToast] = useState('');
@@ -481,7 +499,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
   );
 
   const visible = useMemo(() => {
-    const q = plainNorm(filterText.trim());
+    const q = plainNorm(filterTextDebounced.trim());
     return allEntries
       .filter(e => filterSector === "all" || e.sector === filterSector)
       .filter(e => !q || plainNorm([e.role, e.names, e.ext, e.sector].join(" ")).includes(q))
@@ -489,7 +507,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
         const c = a.sector.localeCompare(b.sector, 'pt');
         return c !== 0 ? c : a.id - b.id;
       });
-  }, [allEntries, filterSector, filterText]);
+  }, [allEntries, filterSector, filterTextDebounced]);
 
   return (
     <>
@@ -607,34 +625,67 @@ function App() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const [toastApp, setToastApp] = useState('');
+  function notifyApp(msg) { setToastApp(msg); setTimeout(() => setToastApp(''), 2800); }
+
   useEffect(() => {
     const m = document.cookie.match(/(?:^|;\s*)hub_tipo=([^;]*)/);
     if (m && decodeURIComponent(m[1]) === "admin") setIsAdmin(true);
 
-    fetch("/api/directory")
-      .then(r => r.json())
-      .then(d => { if (d.ok && d.sectors && d.sectors.length) setAllSectors(d.sectors); })
+    // AbortController para evitar race condition entre cliques rapidos e cleanup do effect.
+    const ac = new AbortController();
+
+    fetch("/api/directory", { signal: ac.signal })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && d.ok && d.sectors && d.sectors.length) setAllSectors(d.sectors); })
       .catch(() => {});
 
-    const fetchSetores = () => fetch("/api/setores")
-      .then(r => r.json())
-      .then(d => setChamadosSetores(d.setores || []))
-      .catch(() => {});
-    fetchSetores();
-    const t = setInterval(fetchSetores, 30000);
-    return () => clearInterval(t);
+    let pollAc = null;
+    let pollTimer = null;
+    const fetchSetores = () => {
+      if (pollAc) pollAc.abort();
+      pollAc = new AbortController();
+      fetch("/api/setores", { signal: pollAc.signal })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => d && setChamadosSetores(d.setores || []))
+        .catch(() => {});
+    };
+    function startPoll() {
+      if (pollTimer) return;
+      fetchSetores();
+      pollTimer = setInterval(fetchSetores, 30000);
+    }
+    function stopPoll() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      if (pollAc) { pollAc.abort(); pollAc = null; }
+    }
+    function onVis() { document.hidden ? stopPoll() : startPoll(); }
+    if (!document.hidden) startPoll();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      ac.abort();
+      stopPoll();
+    };
   }, []);
 
+  // reloadDir continua existindo, mas agora so e usado por add/edit (onde a estrutura
+  // pode mudar de setor); o toggle nao chama mais reloadDir.
   async function reloadDir() {
-    const d = await fetch("/api/directory").then(r => r.json());
-    if (d.ok) setAllSectors(d.sectors);
+    try {
+      const r = await fetch("/api/directory");
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.ok) setAllSectors(d.sectors);
+    } catch {}
   }
 
   async function handleAdd(data) {
     try {
       const r = await fetch("/api/directory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-      const d = await r.json();
-      if (d.ok) await reloadDir();
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) return { ok: false, erro: d.erro || `Erro ${r.status}` };
+      await reloadDir();
       return d;
     } catch { return { ok: false, erro: 'Erro de conexão' }; }
   }
@@ -642,15 +693,50 @@ function App() {
   async function handleEdit(id, data) {
     try {
       const r = await fetch(`/api/directory/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-      const d = await r.json();
-      if (d.ok) await reloadDir();
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) return { ok: false, erro: d.erro || `Erro ${r.status}` };
+      await reloadDir();
       return d;
     } catch { return { ok: false, erro: 'Erro de conexão' }; }
   }
 
+  // Toggle otimista: atualiza UI antes de bater no servidor; manda o valor desejado
+  // (active explicito); reverte em caso de falha; reconcilia se o servidor retornar
+  // um valor diferente (ex.: outro admin tocou no mesmo registro).
   async function handleToggle(id) {
-    await fetch(`/api/directory/${id}/toggle`, { method: "PATCH" });
-    await reloadDir();
+    let anterior = null;
+    setAllSectors(prev => prev.map(s => ({
+      ...s,
+      entries: s.entries.map(e => {
+        if (e.id !== id) return e;
+        anterior = e.active !== false;
+        return { ...e, active: !anterior };
+      }),
+    })));
+    if (anterior === null) return; // id nao encontrado, nada a fazer
+    const desejado = !anterior;
+    try {
+      const r = await fetch(`/api/directory/${id}/toggle`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: desejado }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.erro || `HTTP ${r.status}`);
+      if (typeof d.active === 'boolean' && d.active !== desejado) {
+        setAllSectors(prev => prev.map(s => ({
+          ...s,
+          entries: s.entries.map(e => e.id === id ? { ...e, active: d.active } : e),
+        })));
+      }
+    } catch (err) {
+      // Reverte estado local
+      setAllSectors(prev => prev.map(s => ({
+        ...s,
+        entries: s.entries.map(e => e.id === id ? { ...e, active: anterior } : e),
+      })));
+      notifyApp('Não foi possível alterar o status. Tente novamente.');
+    }
   }
 
   const publicSectors = useMemo(() =>
@@ -744,6 +830,7 @@ function App() {
           onToggle={handleToggle}
         />
       )}
+      {toastApp && <div className="adm-toast adm-toast--app">{toastApp}</div>}
     </div>
   );
 }

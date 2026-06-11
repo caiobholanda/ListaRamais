@@ -115,8 +115,9 @@ app.get('/sso', (req, res) => {
       SSO_SECRET,
       { expiresIn: '8h' }
     );
-    res.cookie('hub_session', session, { httpOnly: true, sameSite: 'Strict', maxAge: 8 * 3600 * 1000 });
-    res.cookie('hub_tipo', tipo, { sameSite: 'Strict', maxAge: 8 * 3600 * 1000 });
+    const secure = process.env.NODE_ENV === 'production';
+    res.cookie('hub_session', session, { httpOnly: true, sameSite: 'Lax', secure, maxAge: 8 * 3600 * 1000 });
+    res.cookie('hub_tipo', tipo, { sameSite: 'Lax', secure, maxAge: 8 * 3600 * 1000 });
     return res.redirect('/');
   } catch {
     return res.redirect('/');

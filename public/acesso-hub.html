@@ -132,10 +132,7 @@
   </div>
 <script>
   (function () {
-    var HUB = 'https://hub-granmarquise.fly.dev';
-    var params = new URLSearchParams(location.search);
-    var next = params.get('next') || (location.origin + '/');
-    document.getElementById('btn-hub').href = HUB + '/?next=' + encodeURIComponent(next);
+    document.getElementById('btn-hub').href = 'https://hub-granmarquise.fly.dev';
   })();
 </script>
 </body>

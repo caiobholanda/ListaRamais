@@ -455,10 +455,30 @@
   }
   .adm-hist-date-input { width: 160px; flex: none; font-size: 0.82rem; padding: 7px 10px; }
   .adm-hist-clear-btn { padding: 7px 12px; font-size: 0.65rem; white-space: nowrap; }
-  .adm-hist-body { max-height: 420px; overflow-y: auto; }
+  .adm-hist-body { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; }
   .adm-hist-empty { padding: 28px 22px; color: var(--fg-soft); font-size: 0.88rem; font-style: italic; }
+  .adm-hist-day-group + .adm-hist-day-group { border-top: 3px double var(--line-strong); }
+  .adm-hist-day-header {
+    position: sticky; top: 0; z-index: 1;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    padding: 12px 22px;
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg) 90%);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+    font-family: var(--font-display); font-style: italic;
+  }
+  .adm-hist-day-label {
+    font-size: 0.95rem; font-weight: 500; color: var(--fg);
+    text-transform: capitalize;
+  }
+  .adm-hist-day-count {
+    font-family: var(--font-mono); font-style: normal;
+    font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--fg-muted);
+  }
   .adm-hist-item { padding: 14px 22px; border-bottom: 1px solid var(--line); }
   .adm-hist-item:last-child { border-bottom: none; }
+  .adm-hist-day-group .adm-hist-item:last-child { border-bottom: 1px solid var(--line); }
+  .adm-hist-day-group:last-child .adm-hist-item:last-child { border-bottom: none; }
   .adm-hist-item__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .adm-hist-badge {
     display: inline-flex; padding: 3px 10px; border-radius: var(--r-pill);

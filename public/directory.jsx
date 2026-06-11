@@ -309,6 +309,13 @@ function HistoryModal({ onClose }) {
 
   useEffect(() => { carregar(); }, []);
 
+  // Trava scroll da pagina de tras enquanto o modal esta aberto.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const ACTION_LABEL = {
     criado: 'Criado', editado: 'Editado', ativado: 'Ativado', inativado: 'Inativado',
     setor_criado: 'Setor Criado', setor_editado: 'Setor Renomeado',
@@ -361,8 +368,40 @@ function HistoryModal({ onClose }) {
     ? history.filter(h => localDateStr(h.at) === filterDate)
     : history;
 
+  // Agrupa itens por dia mantendo a ordem original (mais recente primeiro).
+  const grupos = useMemo(() => {
+    if (!filtered) return null;
+    const g = [];
+    let atualKey = null;
+    let atualLista = null;
+    for (const h of filtered) {
+      const k = localDateStr(h.at);
+      if (k !== atualKey) {
+        atualKey = k;
+        atualLista = [];
+        g.push({ key: k, label: fmtDateHeader(h.at), itens: atualLista });
+      }
+      atualLista.push(h);
+    }
+    return g;
+  }, [filtered]);
+
+  function fmtHora(iso) {
+    return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function fmtDateHeader(iso) {
+    const d = new Date(iso);
+    const hoje = new Date();
+    const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+    const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    if (sameDay(d, hoje)) return 'Hoje · ' + d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    if (sameDay(d, ontem)) return 'Ontem · ' + d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  }
+
   return (
-    <div className="adm-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="adm-modal-overlay">
       <div className="adm-modal adm-modal--hist">
         <div className="adm-modal__header">
           <span>Histórico Geral</span>
@@ -393,18 +432,26 @@ function HistoryModal({ onClose }) {
             <p className="adm-hist-empty">Nenhum registro ainda.</p>
           ) : filtered.length === 0 ? (
             <p className="adm-hist-empty">Nenhum registro neste dia.</p>
-          ) : filtered.map((h, i) => (
-            <div key={i} className="adm-hist-item">
-              <div className="adm-hist-item__head">
-                <span className={"adm-hist-badge " + (ACTION_CLS[h.action] || '')}>{ACTION_LABEL[h.action] || h.action}</span>
-                <span className="adm-hist-entry">
-                  {h.role || `Ramal #${h.entryId}`}
-                  {h.sector ? <em> · {h.sector}</em> : null}
-                </span>
-                <span className="adm-hist-by">{h.by}</span>
-                <span className="adm-hist-at">{fmtDate(h.at)}</span>
+          ) : grupos.map(gr => (
+            <div key={gr.key} className="adm-hist-day-group">
+              <div className="adm-hist-day-header">
+                <span className="adm-hist-day-label">{gr.label}</span>
+                <span className="adm-hist-day-count">{gr.itens.length} {gr.itens.length === 1 ? 'registro' : 'registros'}</span>
               </div>
-              {(h.action === 'editado' || h.action === 'setor_editado' || h.action === 'marcado_grupo' || h.action === 'desmarcado_grupo' || h.action === 'realocado') && renderDiff(h.before, h.after)}
+              {gr.itens.map((h, i) => (
+                <div key={gr.key + '-' + i} className="adm-hist-item">
+                  <div className="adm-hist-item__head">
+                    <span className={"adm-hist-badge " + (ACTION_CLS[h.action] || '')}>{ACTION_LABEL[h.action] || h.action}</span>
+                    <span className="adm-hist-entry">
+                      {h.role || `Ramal #${h.entryId}`}
+                      {h.sector ? <em> · {h.sector}</em> : null}
+                    </span>
+                    <span className="adm-hist-by">{h.by}</span>
+                    <span className="adm-hist-at">{fmtHora(h.at)}</span>
+                  </div>
+                  {(h.action === 'editado' || h.action === 'setor_editado' || h.action === 'marcado_grupo' || h.action === 'desmarcado_grupo' || h.action === 'realocado') && renderDiff(h.before, h.after)}
+                </div>
+              ))}
             </div>
           ))}
         </div>

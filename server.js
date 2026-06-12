@@ -105,8 +105,12 @@ function requireAdmin(req, res, next) {
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.get('/sso', (req, res) => {
-  const { sso_token } = req.query;
-  if (!sso_token) return res.redirect('/');
+  const { sso_token, theme } = req.query;
+  // Propaga ?theme=dark|light no destino para sincronizacao de modo
+  // claro/escuro com o Hub. Sem isso, o tema vindo do Hub e' descartado
+  // e o directory.jsx caia no localStorage local.
+  const destWithTheme = (theme === 'dark' || theme === 'light') ? `/?theme=${theme}` : '/';
+  if (!sso_token) return res.redirect(destWithTheme);
   try {
     const payload = jwt.verify(sso_token, SSO_SECRET);
     const tipo = isAdminEmail(payload.email) ? 'admin' : 'usuario';
@@ -118,9 +122,9 @@ app.get('/sso', (req, res) => {
     const secure = process.env.NODE_ENV === 'production';
     res.cookie('hub_session', session, { httpOnly: true, sameSite: 'Lax', secure, maxAge: 8 * 3600 * 1000 });
     res.cookie('hub_tipo', tipo, { sameSite: 'Lax', secure, maxAge: 8 * 3600 * 1000 });
-    return res.redirect('/');
+    return res.redirect(destWithTheme);
   } catch {
-    return res.redirect('/');
+    return res.redirect(destWithTheme);
   }
 });
 

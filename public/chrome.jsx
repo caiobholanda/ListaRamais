@@ -33,10 +33,13 @@ function ThemeToggle({ theme, onToggle }) {
 
 function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick }) {
   function sairParaHub() {
-    // Limpa qualquer storage local antes de redirecionar para o Hub.
+    // Captura o tema ATUAL antes de limpar o storage para propagar ao Hub.
+    let t = 'light';
+    try { t = localStorage.getItem('gm-theme') === 'dark' ? 'dark' : 'light'; } catch {}
     try { localStorage.clear(); sessionStorage.clear(); } catch {}
     // ?logout=1&from=ramais permite ao Hub registrar este logout na jornada do usuario.
-    window.location.href = 'https://hub-granmarquise.fly.dev/?logout=1&from=ramais';
+    // &theme=... mantem o modo de visualizacao sincronizado entre os sistemas.
+    window.location.href = 'https://hub-granmarquise.fly.dev/?logout=1&from=ramais&theme=' + t;
   }
   // Padrao Gran Marquise (todos os sistemas do hub): DD/MM/AAAA · HH:MM (Fortaleza).
   const [now, setNow] = useState(() => new Date());

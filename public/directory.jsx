@@ -605,7 +605,16 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
 // ── App ──────────────────────────────────────────────────────────────────────
 
 function App() {
-  const [theme, setTheme] = useState(() => localStorage.getItem("gm-theme") || "light");
+  // Sincronizacao de tema entre sistemas do Hub:
+  // ?theme=dark|light na URL (vindo do Hub/outro) prevalece sobre o local.
+  const [theme, setTheme] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const fromUrl = p.get("theme");
+      if (fromUrl === "dark" || fromUrl === "light") return fromUrl;
+    } catch {}
+    return localStorage.getItem("gm-theme") || "light";
+  });
   const [query, setQuery] = useState("");
   const [sector, setSector] = useState("all");
   const [scrolled, setScrolled] = useState(false);

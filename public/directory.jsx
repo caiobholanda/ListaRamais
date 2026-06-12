@@ -107,6 +107,27 @@ function Section({ data, query, index }) {
   );
 }
 
+// Skeleton exibido enquanto o primeiro fetch de /api/directory esta em
+// andamento. Da feedback visual em vez de "Nenhum resultado" piscando.
+function DirectorySkeleton() {
+  const bar = { background: 'color-mix(in srgb, var(--fg-soft) 18%, transparent)', borderRadius: 6, height: 18, animation: 'gmPulse 1.2s ease-in-out infinite' };
+  const linha = (w) => <div style={{ ...bar, width: w, marginBottom: 10 }} />;
+  return (
+    <div aria-busy="true" aria-label="Carregando diretório" style={{ padding: '24px 0' }}>
+      <style>{`@keyframes gmPulse { 0%,100% { opacity: .35 } 50% { opacity: .7 } }`}</style>
+      {[0,1,2,3].map(i => (
+        <div key={i} style={{ marginBottom: 32 }}>
+          <div style={{ ...bar, width: '180px', height: 22, marginBottom: 16 }} />
+          {linha('92%')}
+          {linha('86%')}
+          {linha('78%')}
+          {linha('70%')}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function EmptyState({ query, onClear }) {
   return (
     <div className="gm-empty">
@@ -622,6 +643,9 @@ function App() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [allSectors, setAllSectors] = useState(window.GM_DIRECTORY || []);
   const [chamadosSetores, setChamadosSetores] = useState([]);
+  // True ate o primeiro fetch de /api/directory terminar. Usado pra exibir
+  // skeleton em vez de "Nenhum resultado" na tela vazia.
+  const [booting, setBooting] = useState(() => !(window.GM_DIRECTORY && window.GM_DIRECTORY.length));
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -647,7 +671,8 @@ function App() {
     fetch("/api/directory", { signal: ac.signal })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d && d.ok && d.sectors && d.sectors.length) setAllSectors(d.sectors); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { setBooting(false); });
 
     let pollAc = null;
     let pollTimer = null;
@@ -824,9 +849,11 @@ function App() {
         <GMChrome.Hero query={query} onQuery={setQuery} shown={shown} onClear={clear} />
         <GMChrome.SectorChips sectors={chipList} active={sector} onPick={setSector} counts={counts} />
         <div className="gm-results">
-          {filtered.length === 0
-            ? <EmptyState query={query} onClear={clear} />
-            : filtered.map((s, i) => <Section key={s.sector} data={s} query={query} index={i + 1} />)}
+          {booting && filtered.length === 0
+            ? <DirectorySkeleton />
+            : filtered.length === 0
+              ? <EmptyState query={query} onClear={clear} />
+              : filtered.map((s, i) => <Section key={s.sector} data={s} query={query} index={i + 1} />)}
         </div>
       </main>
 

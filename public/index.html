@@ -597,10 +597,21 @@
 </style>
 </head>
 <body>
-  <div id="root"></div>
+  <!-- Spinner inicial: aparece antes de React montar e some assim que o
+       JS substituir o conteudo. Da feedback visual nos primeiros ms entre
+       o paint do HTML e o boot do directory.jsx. -->
+  <div id="root">
+    <div id="gm-boot-spinner" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:var(--bg,#fafafa);color:var(--fg-soft,#6b6b6b);font-family:ui-monospace,'JetBrains Mono',Menlo,monospace;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase">
+      <div style="width:40px;height:40px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:gmSpin .9s linear infinite"></div>
+      <div>Carregando diretório…</div>
+    </div>
+  </div>
+  <style>@keyframes gmSpin { to { transform: rotate(360deg); } }</style>
 
-  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <!-- React/React-DOM auto-hospedados (eram do unpkg.com — eliminava cold
+       start de outro dominio TLS). UMDs identicos aos do CDN, 130 KB. -->
+  <script src="/vendor/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="/vendor/react-dom.production.min.js" crossorigin="anonymous"></script>
   <script src="/assets/app.js" defer></script>
 </body>
 </html>

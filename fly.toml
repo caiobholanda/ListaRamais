@@ -6,10 +6,21 @@ primary_region = 'gru'
 [http_service]
   internal_port = 3000
   force_https = true
-  auto_stop_machines = 'stop'
+  # auto_stop=off + min_machines_running=1: VM NUNCA para. Elimina cold
+  # start de 3-5s no primeiro acesso. Coberto pelo free allowance do
+  # Fly (3 shared-cpu-1x 256MB rodando 24/7), entao custo ~zero.
+  # Mesma estrategia do sistema-chamados (validada em producao).
+  auto_stop_machines = 'off'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
+
+  [[http_service.checks]]
+    grace_period = '10s'
+    interval = '30s'
+    method = 'GET'
+    timeout = '5s'
+    path = '/healthz'
 
 [[mounts]]
   source = 'ramais_data'

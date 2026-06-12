@@ -102,7 +102,8 @@ function requireAdmin(req, res, next) {
   }
 }
 
-app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/health',  (_req, res) => res.json({ ok: true }));
+app.get('/healthz', (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
 app.get('/sso', (req, res) => {
   const { sso_token, theme } = req.query;
@@ -308,7 +309,7 @@ app.use('/api', (_req, res) => res.status(404).json({ ok: false, erro: 'Endpoint
 
 // Gate: paginas/assets so podem ser servidos para quem ja passou pelo Hub.
 // Excecoes: acesso-hub.html (a propria tela de gate), /sso, /health.
-const PUBLIC_PATHS = new Set(['/acesso-hub.html', '/sso', '/health']);
+const PUBLIC_PATHS = new Set(['/acesso-hub.html', '/sso', '/health', '/healthz']);
 function temSessaoValida(req) {
   const token = req.cookies && req.cookies.hub_session;
   if (!token) return false;

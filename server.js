@@ -106,14 +106,22 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.get('/sso', (req, res) => {
   const { sso_token, theme } = req.query;
-  // Propaga ?theme=dark|light no destino para sincronizacao de modo
-  // claro/escuro com o Hub. Sem isso, o tema vindo do Hub e' descartado
-  // e o directory.jsx caia no localStorage local.
   const destWithTheme = (theme === 'dark' || theme === 'light') ? `/?theme=${theme}` : '/';
   if (!sso_token) return res.redirect(destWithTheme);
   try {
     const payload = jwt.verify(sso_token, SSO_SECRET);
-    const tipo = isAdminEmail(payload.email) ? 'admin' : 'usuario';
+    // Fonte de verdade do papel admin neste site: o array sites_admin que o
+    // Hub embute no JWT (vindo do banco gerenciado pelo painel admin).
+    // Fallback para a allowlist local apenas quando o token vier de uma
+    // versao antiga do Hub sem o campo sites_admin — garante zero perda
+    // de acesso na transicao. Apos validacao em prod, a allowlist sera
+    // removida.
+    let tipo;
+    if (Array.isArray(payload.sites_admin)) {
+      tipo = payload.sites_admin.includes('ramais') ? 'admin' : 'usuario';
+    } else {
+      tipo = isAdminEmail(payload.email) ? 'admin' : 'usuario';
+    }
     const session = jwt.sign(
       { nome: payload.nome, email: payload.email, tipo },
       SSO_SECRET,

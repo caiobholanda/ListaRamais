@@ -308,8 +308,12 @@ app.get('/api/usuarios', requireAdmin, async (_req, res) => {
 app.use('/api', (_req, res) => res.status(404).json({ ok: false, erro: 'Endpoint não encontrado' }));
 
 // Gate: paginas/assets so podem ser servidos para quem ja passou pelo Hub.
-// Excecoes: acesso-hub.html (a propria tela de gate), /sso, /health.
+// Excecoes: acesso-hub.html (a propria tela de gate), /sso, /health, /healthz.
+// Tambem libera /vendor/ (libs React auto-hospedadas, sem dado sensivel) e
+// /assets/ (build de app.js) para que o gate funcione mesmo no primeiro
+// acesso quando o browser pre-busca scripts.
 const PUBLIC_PATHS = new Set(['/acesso-hub.html', '/sso', '/health', '/healthz']);
+const PUBLIC_PREFIXES = ['/vendor/', '/assets/'];
 function temSessaoValida(req) {
   const token = req.cookies && req.cookies.hub_session;
   if (!token) return false;
@@ -318,6 +322,7 @@ function temSessaoValida(req) {
 
 app.use((req, res, next) => {
   if (PUBLIC_PATHS.has(req.path)) return next();
+  if (PUBLIC_PREFIXES.some(p => req.path.startsWith(p))) return next();
   if (temSessaoValida(req)) return next();
   // Pedidos GET sem sessao: manda para acesso-hub. APIs JSON respondem 401.
   if (req.method !== 'GET') return res.status(401).json({ ok: false, erro: 'Sessao expirada' });

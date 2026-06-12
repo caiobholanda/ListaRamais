@@ -50,11 +50,10 @@ function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick }) {
           )}
           <ThemeToggle theme={theme} onToggle={onToggle} />
           <button
-            className="gm-gear-btn"
+            className="gm-sair-btn"
             onClick={sairParaHub}
             title="Sair e voltar ao Hub"
             aria-label="Sair e voltar ao Hub"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, paddingLeft: 10, paddingRight: 12, fontSize: 13, fontWeight: 500 }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>

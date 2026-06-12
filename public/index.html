@@ -263,6 +263,19 @@
   }
   .gm-gear-btn:hover { color: var(--accent); border-color: var(--accent); }
 
+  /* Botao "Sair" — mesmas dimensoes verticais do gear, mas com texto + icone
+     alinhados horizontalmente e centralizados. */
+  .gm-sair-btn {
+    height: 36px; padding: 0 14px; border-radius: var(--r-sm);
+    border: 1px solid var(--line-strong); background: transparent;
+    color: var(--fg-soft); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font: 500 13px/1 var(--font-sans, system-ui, sans-serif);
+    transition: all var(--dur-fast) var(--ease);
+  }
+  .gm-sair-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .gm-sair-btn svg { display: block; }
+
   /* ── Admin panel overlay + slide-in ── */
   .adm-overlay {
     position: fixed; inset: 0; z-index: 100;

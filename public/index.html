@@ -276,6 +276,15 @@
   .gm-sair-btn:hover { color: var(--accent); border-color: var(--accent); }
   .gm-sair-btn svg { display: block; }
 
+  /* Padrao Gran Marquise: data + hora no header de todos os sistemas do hub. */
+  .gm-datahora {
+    font: 500 12px/1 ui-monospace, "JetBrains Mono", Menlo, monospace;
+    letter-spacing: .04em; color: var(--fg-soft);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+    padding: 0 4px;
+  }
+  @media (max-width: 560px) { .gm-datahora { display: none; } }
+
   /* ── Admin panel overlay + slide-in ── */
   .adm-overlay {
     position: fixed; inset: 0; z-index: 100;

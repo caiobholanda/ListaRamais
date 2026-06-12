@@ -38,11 +38,20 @@ function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick }) {
     // ?logout=1&from=ramais permite ao Hub registrar este logout na jornada do usuario.
     window.location.href = 'https://hub-granmarquise.fly.dev/?logout=1&from=ramais';
   }
+  // Padrao Gran Marquise (todos os sistemas do hub): DD/MM/AAAA · HH:MM (Fortaleza).
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30 * 1000);
+    return () => clearInterval(id);
+  }, []);
+  const dataFmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Fortaleza', day: '2-digit', month: '2-digit', year: 'numeric' }).format(now);
+  const horaFmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Fortaleza', hour: '2-digit', minute: '2-digit' }).format(now);
   return (
     <header className={"gm-header" + (scrolled ? " is-scrolled" : "")} id="top">
       <div className="gm-header__inner">
         <Logo />
         <div className="gm-header__right">
+          <span className="gm-datahora" title="Horário de Fortaleza">{dataFmt} · {horaFmt}</span>
           {isAdmin && (
             <button className="gm-gear-btn" onClick={onAdminClick} title="Gerenciar diretório" aria-label="Gerenciar diretório">
               <IconGear size="18" />

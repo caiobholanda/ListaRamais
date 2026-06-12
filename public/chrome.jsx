@@ -35,7 +35,8 @@ function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick }) {
   function sairParaHub() {
     // Limpa qualquer storage local antes de redirecionar para o Hub.
     try { localStorage.clear(); sessionStorage.clear(); } catch {}
-    window.location.href = 'https://hub-granmarquise.fly.dev/';
+    // ?logout=1&from=ramais permite ao Hub registrar este logout na jornada do usuario.
+    window.location.href = 'https://hub-granmarquise.fly.dev/?logout=1&from=ramais';
   }
   return (
     <header className={"gm-header" + (scrolled ? " is-scrolled" : "")} id="top">

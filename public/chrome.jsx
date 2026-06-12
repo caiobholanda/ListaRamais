@@ -32,6 +32,11 @@ function ThemeToggle({ theme, onToggle }) {
 }
 
 function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick }) {
+  function sairParaHub() {
+    // Limpa qualquer storage local antes de redirecionar para o Hub.
+    try { localStorage.clear(); sessionStorage.clear(); } catch {}
+    window.location.href = 'https://hub-granmarquise.fly.dev/';
+  }
   return (
     <header className={"gm-header" + (scrolled ? " is-scrolled" : "")} id="top">
       <div className="gm-header__inner">
@@ -43,6 +48,20 @@ function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick }) {
             </button>
           )}
           <ThemeToggle theme={theme} onToggle={onToggle} />
+          <button
+            className="gm-gear-btn"
+            onClick={sairParaHub}
+            title="Sair e voltar ao Hub"
+            aria-label="Sair e voltar ao Hub"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, paddingLeft: 10, paddingRight: 12, fontSize: 13, fontWeight: 500 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Sair
+          </button>
         </div>
       </div>
     </header>

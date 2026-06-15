@@ -921,6 +921,9 @@ function App() {
   // Apenas usuarios admin veem o toggle e os lapis; o save continua passando
   // por requireAdmin no backend (visibilidade no front nao e' barreira real).
   const [editMode, setEditMode] = useState(false);
+  // Flag para garantir que o auto-on do editMode ao detectar admin acontece
+  // SO UMA VEZ no mount. Se o user desligar manualmente depois, nao religa.
+  const editModeAutoInitRef = useRef(false);
   // Entry sendo editada via Modo Edicao (fora do AdminPanel). null = fechado.
   const [quickEdit, setQuickEdit] = useState(null);
   const [allSectors, setAllSectors] = useState(window.GM_DIRECTORY || []);
@@ -963,7 +966,17 @@ function App() {
 
   useEffect(() => {
     const m = document.cookie.match(/(?:^|;\s*)hub_tipo=([^;]*)/);
-    if (m && decodeURIComponent(m[1]) === "admin") setIsAdmin(true);
+    if (m && decodeURIComponent(m[1]) === "admin") {
+      setIsAdmin(true);
+      // Modo edicao ja vem ATIVO por default para admins — assim os lapis
+      // aparecem imediatamente sem precisar tocar no toggle. Ref garante
+      // que isto so acontece UMA vez (no mount). Desligamento manual do
+      // user (botao ou tecla E) nao e' revertido por re-execucao do effect.
+      if (!editModeAutoInitRef.current) {
+        setEditMode(true);
+        editModeAutoInitRef.current = true;
+      }
+    }
 
     // AbortController para evitar race condition entre cliques rapidos e cleanup do effect.
     const ac = new AbortController();
@@ -1110,24 +1123,38 @@ function App() {
     const hasGrupos = publicSectors.some(s => s.sector === 'Grupos de Transferência' && s.entries.some(matchEntry));
     let pendCount = 0;
     publicSectors.forEach(s => s.entries.forEach(e => { if (e.pendente && matchEntry(e, s)) pendCount++; }));
-    // BUG FIX: /api/setores devolve TODOS os setores cadastrados no sistema-chamados
-    // (35), incluindo varios sem nenhum contato no diretorio. Filtramos pelos que
-    // tem entries ativas (publicSectors), comparando por nome normalizado via
-    // plainNorm — assim divergencias como 'RH' vs 'Recursos Humanos' nao geram
-    // chips fantasma. Quando ha busca ativa, exige tambem >=1 entry batendo na
-    // query, para esconder setores cujos contatos sumiram do filtro atual.
-    const activeSet = new Set(
-      publicSectors
-        .filter(s => s.entries.length > 0)
-        .filter(s => !q || s.entries.some(e => matchEntry(e, s)))
-        .map(s => plainNorm(s.sector))
-    );
-    const setores = chamadosSetores
-      .filter(s => s.name !== 'Grupos de Transferência')
-      .filter(s => activeSet.has(plainNorm(s.name)))
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt'))
-      .map(s => ({ sector: s.name, short: displayName(s.name) }));
+
+    // BUG FIX (chip-flash no reload): derivar chips DIRETAMENTE dos setores
+    // ja carregados (publicSectors), nao mais de /api/setores. publicSectors
+    // ja nasce populado pelo fallback window.GM_DIRECTORY, entao os chips
+    // aparecem imediatamente no primeiro paint — sem esperar /api/setores
+    // resolver. Mantem o filtro anti-fantasma (so setor com ramal ativo) e a
+    // busca textual (so setor cujas entries batem com a query).
+    const setoresPorChave = new Map();
+    for (const s of publicSectors) {
+      if (s.sector === 'Grupos de Transferência') continue;
+      const temRamalAtivo = s.entries.some(e =>
+        e.ext && String(e.ext).trim() !== '' && e.active !== false
+      );
+      if (!temRamalAtivo) continue;
+      if (q && !s.entries.some(e => matchEntry(e, s))) continue;
+      // Chave normalizada evita duplicata por case/acento.
+      setoresPorChave.set(plainNorm(s.sector), s.sector);
+    }
+    // Uniao com chamadosSetores: defensivo. So inclui se ja existe no
+    // diretorio (dedup por chave normalizada) — preserva o fix anti-fantasma
+    // original (commit 49ecfc1) impedindo setor de /api/setores SEM ramal
+    // entrar como chip clicavel-mas-vazio.
+    for (const cs of chamadosSetores) {
+      if (cs.name === 'Grupos de Transferência') continue;
+      const k = plainNorm(cs.name);
+      if (setoresPorChave.has(k)) continue;
+      // setor de /api/setores que nao tem correspondente no diretorio:
+      // ignora (era o caso dos 9 fantasma — RH, TI, Bar Rooftop etc).
+    }
+    const setores = [...setoresPorChave.values()]
+      .sort((a, b) => a.localeCompare(b, 'pt'))
+      .map(nome => ({ sector: nome, short: displayName(nome) }));
     const out = [...setores];
     if (hasGrupos) out.push({ sector: 'Grupos de Transferência', short: 'Grupos Transferência' });
     if (pendCount > 0) out.push({ sector: '__pendente', short: 'Pendente' });

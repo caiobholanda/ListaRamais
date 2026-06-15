@@ -39,9 +39,23 @@ function useCopy() {
   return [copied, copy];
 }
 
+// Mascara visual de celular brasileiro: (00) 00000-0000. Aceita string com
+// qualquer formato, extrai digitos e remonta no padrao. Maximo 11 digitos.
+function _fmtCelular(raw) {
+  const d = String(raw || '').replace(/\D/g, '').slice(0, 11);
+  if (d.length === 0) return '';
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+function _celularDigits(raw) { return String(raw || '').replace(/\D/g, ''); }
+
 function Entry({ item, query, editMode, isAdmin, onQuickEdit }) {
   const [copied, copy] = useCopy();
   const [copiedEmail, copyEmail] = useCopy();
+  // Defaults para registros antigos sem celular/isWhatsapp: undefined vira ''/false.
+  const celDigitos = _celularDigits(item.celular || '');
+  const mostraWA = !!item.isWhatsapp && celDigitos.length >= 10;
   const compact = item.ext.replace(/\s/g, "");
   const isToll = /^0800/.test(compact);
   const isLong = compact.length > 6;
@@ -74,6 +88,20 @@ function Entry({ item, query, editMode, isAdmin, onQuickEdit }) {
                   aria-label="Copiar e-mail" title={copiedEmail ? "Copiado!" : "Copiar e-mail"}>
                   {copiedEmail ? <IconCheck size="13" /> : <IconCopy size="13" />}
                 </button>
+              </p>
+            )}
+            {item.celular && (
+              <p className="gm-row__names gm-row__cel" style={{ marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span>{_fmtCelular(item.celular)}</span>
+                {mostraWA && (
+                  <a className="gm-row__wa" href={`https://wa.me/55${celDigitos}`}
+                    target="_blank" rel="noopener noreferrer"
+                    aria-label="Conversar no WhatsApp" title="Conversar no WhatsApp">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.2-.2.3-.8.9-1 1.1-.2.2-.4.2-.7.1-.3-.1-1.2-.4-2.3-1.4-.8-.7-1.4-1.6-1.5-1.9-.2-.3 0-.4.1-.5.1-.1.3-.3.4-.4.1-.1.2-.2.3-.4.1-.2 0-.3 0-.4 0-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.7.4-.3.3-.9.9-.9 2.2 0 1.3.9 2.5 1.1 2.7.1.2 1.8 2.7 4.3 3.8.6.3 1.1.4 1.4.5.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.2-.2-.4-.2zM12 22a10 10 0 0 1-5.2-1.4L2 22l1.5-4.7A10 10 0 1 1 12 22zm0-18a8 8 0 0 0-6.7 12.3l-.9 2.7 2.8-.9A8 8 0 1 0 12 4z"/>
+                    </svg>
+                  </a>
+                )}
               </p>
             )}
           </>
@@ -263,10 +291,15 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
   const [role, setRole] = useState(entry && !entry.grupo ? entry.role : '');
   const [names, setNames] = useState(entry ? entry.names : '');
   const [email, setEmail] = useState(entry && entry.email ? entry.email : '');
+  // Defaults seguros para registros antigos: undefined → ''/false.
+  const [celular, setCelular] = useState(entry && entry.celular ? _fmtCelular(entry.celular) : '');
+  const [isWhatsapp, setIsWhatsapp] = useState(entry ? !!entry.isWhatsapp : false);
   const [ext, setExt] = useState(entry ? entry.ext : '');
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
+  const celularDigits = _celularDigits(celular);
+  const waDisabled = celularDigits.length < 10;
 
   function validate() {
     const e = {};
@@ -304,9 +337,13 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
     }
     setSaving(true);
     const emailFinal = email.trim() || null;
+    // Persiste celular como string de digitos (formato canonico, facil de
+    // tratar). isWhatsapp so vai true se houver celular minimamente valido.
+    const celularFinal = celularDigits;
+    const waFinal = !!isWhatsapp && !waDisabled;
     const payload = grupo
-      ? { grupo: true, names: names.trim(), email: emailFinal, ext: ext.trim() }
-      : { grupo: false, sector: sector.trim(), short: (sectors.find(s => s.sector === sector)?.short || sector.split(/[\s/]/)[0]), role: role.trim(), names: names.trim(), email: emailFinal, ext: ext.trim() };
+      ? { grupo: true, names: names.trim(), email: emailFinal, celular: celularFinal, isWhatsapp: waFinal, ext: ext.trim() }
+      : { grupo: false, sector: sector.trim(), short: (sectors.find(s => s.sector === sector)?.short || sector.split(/[\s/]/)[0]), role: role.trim(), names: names.trim(), email: emailFinal, celular: celularFinal, isWhatsapp: waFinal, ext: ext.trim() };
     const result = await onSave(payload);
     if (result && result.ok === false) {
       setApiError(result.erro || 'Erro ao salvar');
@@ -364,6 +401,25 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
             onChange={e => { setEmail(e.target.value); if (errors.email) setErrors({ ...errors, email: '' }); }}
             placeholder="exemplo@granmarquise.com.br" />
           {errors.email && <span className="adm-field-error">{errors.email}</span>}
+
+          <label className="adm-label">Celular</label>
+          <input className="adm-input"
+            type="tel" inputMode="numeric" autoComplete="tel"
+            value={celular}
+            onChange={e => {
+              setCelular(_fmtCelular(e.target.value));
+              // Se o usuario apagar o celular, desliga WhatsApp automaticamente
+              // para nao salvar isWhatsapp=true sem numero.
+              if (!_celularDigits(e.target.value)) setIsWhatsapp(false);
+            }}
+            placeholder="(85) 99999-9999" />
+
+          <label className="adm-checkbox-row" style={{ opacity: waDisabled ? 0.5 : 1 }}>
+            <input type="checkbox" checked={isWhatsapp && !waDisabled}
+              disabled={waDisabled}
+              onChange={e => setIsWhatsapp(e.target.checked)} />
+            <span>É WhatsApp</span>
+          </label>
 
           <label className="adm-label">Ramal / Número *</label>
           <input className={'adm-input' + (errors.ext ? ' adm-input--err' : '')}
@@ -428,7 +484,7 @@ function HistoryModal({ onClose }) {
     marcado_grupo: 'adm-hist-badge--edit', desmarcado_grupo: 'adm-hist-badge--edit',
     realocado: 'adm-hist-badge--edit',
   };
-  const FIELD_LABEL = { sector: 'Setor', role: 'Cargo', names: 'Nomes', email: 'E-mail', ext: 'Ramal', nome: 'Nome', grupo: 'Grupo', pendente: 'Pendente' };
+  const FIELD_LABEL = { sector: 'Setor', role: 'Cargo', names: 'Nomes', email: 'E-mail', celular: 'Celular', isWhatsapp: 'WhatsApp', ext: 'Ramal', nome: 'Nome', grupo: 'Grupo', pendente: 'Pendente' };
   function fmtVal(k, v) {
     if (k === 'grupo' || k === 'pendente') return v ? 'Sim' : 'Não';
     return v || '—';
@@ -926,8 +982,21 @@ function App() {
     const hasGrupos = publicSectors.some(s => s.sector === 'Grupos de Transferência' && s.entries.some(matchEntry));
     let pendCount = 0;
     publicSectors.forEach(s => s.entries.forEach(e => { if (e.pendente && matchEntry(e, s)) pendCount++; }));
+    // BUG FIX: /api/setores devolve TODOS os setores cadastrados no sistema-chamados
+    // (35), incluindo varios sem nenhum contato no diretorio. Filtramos pelos que
+    // tem entries ativas (publicSectors), comparando por nome normalizado via
+    // plainNorm — assim divergencias como 'RH' vs 'Recursos Humanos' nao geram
+    // chips fantasma. Quando ha busca ativa, exige tambem >=1 entry batendo na
+    // query, para esconder setores cujos contatos sumiram do filtro atual.
+    const activeSet = new Set(
+      publicSectors
+        .filter(s => s.entries.length > 0)
+        .filter(s => !q || s.entries.some(e => matchEntry(e, s)))
+        .map(s => plainNorm(s.sector))
+    );
     const setores = chamadosSetores
       .filter(s => s.name !== 'Grupos de Transferência')
+      .filter(s => activeSet.has(plainNorm(s.name)))
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name, 'pt'))
       .map(s => ({ sector: s.name, short: displayName(s.name) }));

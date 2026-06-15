@@ -213,6 +213,17 @@
   .gm-row__copy:hover { color: var(--accent); border-color: var(--line-strong); }
   @media (hover: none) { .gm-row__copy { opacity: 1; } }
 
+  /* Icone do WhatsApp: link <a> ao lado do celular. Mesma familia visual do
+     gm-row__copy mas com cor verde WA (#25D366 — mantida em ambos os temas
+     pois e' a brand color do WhatsApp). 22x22, opacidade 1 (sempre visivel). */
+  .gm-row__wa {
+    width: 22px; height: 22px; flex: none; border-radius: var(--r-sm);
+    display: inline-grid; place-items: center;
+    color: #25D366; text-decoration: none;
+    transition: transform var(--dur-fast);
+  }
+  .gm-row__wa:hover { transform: scale(1.12); color: #128C7E; }
+
   .gm-mark {
     background: transparent; color: var(--accent); font-weight: 500;
     border-bottom: 1.5px solid var(--accent);

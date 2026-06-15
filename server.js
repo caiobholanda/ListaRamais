@@ -147,7 +147,11 @@ const GRUPO_SECTOR = 'Grupos de Transferência';
 const GRUPO_SHORT = 'Grupos Transferência';
 
 app.post('/api/directory', requireAdmin, (req, res) => {
-  const { sector, short, role, names, email, ext, grupo } = req.body;
+  const { sector, short, role, names, email, celular, isWhatsapp, ext, grupo } = req.body;
+  // Celular guardado como string de digitos (max 11). Cliente faz o display
+  // com mascara; armazenar canonico evita variacao entre cadastros.
+  const celularNorm = String(celular || '').replace(/\D/g, '').slice(0, 11);
+  const waNorm = !!isWhatsapp && celularNorm.length >= 10;
   const isGrupo = !!grupo;
   if (isGrupo) {
     if (!ext) return res.status(400).json({ ok: false, erro: 'ext obrigatório' });
@@ -170,8 +174,8 @@ app.post('/api/directory', requireAdmin, (req, res) => {
     if (!sec) { sec = { sector, short: short || sector, entries: [] }; data.push(sec); }
   }
   const newEntry = isGrupo
-    ? { id, role: '', names: names || '', email: emailNorm || '', ext, active: true, grupo: true }
-    : { id, role, names: names || '', email: emailNorm || '', ext, active: true, grupo: false, pendente: false };
+    ? { id, role: '', names: names || '', email: emailNorm || '', celular: celularNorm, isWhatsapp: waNorm, ext, active: true, grupo: true }
+    : { id, role, names: names || '', email: emailNorm || '', celular: celularNorm, isWhatsapp: waNorm, ext, active: true, grupo: false, pendente: false };
   sec.entries.push(newEntry);
   saveDir(data);
   pushHist(id, 'criado', req.hubUser, null,
@@ -185,7 +189,9 @@ app.post('/api/directory', requireAdmin, (req, res) => {
 
 app.put('/api/directory/:id', requireAdmin, (req, res) => {
   const id = parseInt(req.params.id);
-  const { sector, short, role, names, email, ext, grupo } = req.body;
+  const { sector, short, role, names, email, celular, isWhatsapp, ext, grupo } = req.body;
+  const celularNorm = String(celular || '').replace(/\D/g, '').slice(0, 11);
+  const waNorm = !!isWhatsapp && celularNorm.length >= 10;
   const isGrupo = !!grupo;
   if (isGrupo) {
     if (!ext) return res.status(400).json({ ok: false, erro: 'ext obrigatório' });
@@ -214,8 +220,8 @@ app.put('/api/directory/:id', requireAdmin, (req, res) => {
     else if (short) targetSec.short = short;
   }
   const updated = isGrupo
-    ? { id: entry.id, role: '', names: names || '', email: emailNorm || '', ext, active: entry.active, grupo: true }
-    : { id: entry.id, role, names: names || '', email: emailNorm || '', ext, active: entry.active, grupo: false, pendente: false };
+    ? { id: entry.id, role: '', names: names || '', email: emailNorm || '', celular: celularNorm, isWhatsapp: waNorm, ext, active: entry.active, grupo: true }
+    : { id: entry.id, role, names: names || '', email: emailNorm || '', celular: celularNorm, isWhatsapp: waNorm, ext, active: entry.active, grupo: false, pendente: false };
   targetSec.entries.push(updated);
   saveDir(data);
   const fieldsChanged =

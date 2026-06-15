@@ -441,7 +441,10 @@ function EntryForm({ entry, sectors, sectorsCanonical, onSave, onCancel }) {
   }
 
   return (
-    <div className="adm-modal-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
+    // Modal de criar/editar contato: clique no fundo (overlay) NAO fecha mais.
+    // Sai apenas via botao 'X' (close), 'Cancelar', tecla ESC ou Salvar OK —
+    // evita perda acidental de dados em formulario meio-preenchido.
+    <div className="adm-modal-overlay">
       <div className="adm-modal">
         <div className="adm-modal__header">
           <span>{entry ? 'Editar Contato' : 'Adicionar Contato'}</span>

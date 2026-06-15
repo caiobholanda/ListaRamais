@@ -2,7 +2,7 @@ const { useState, useEffect, useRef, useMemo } = React;
 
 function Logo() {
   return (
-    <a className="gm-logo" href="#top" aria-label="Hotel Gran Marquise — início">
+    <a className="gm-logo" href="https://hub-granmarquise.fly.dev" target="_blank" rel="noopener noreferrer" aria-label="Abrir o Hub em nova aba" title="Abrir o Hub em nova aba" style={{ cursor: 'pointer' }}>
       <span className="gm-logo__mono" aria-hidden="true">GM</span>
       <span className="gm-logo__rule" aria-hidden="true" />
       <span className="gm-logo__words">

@@ -355,7 +355,7 @@ function SectorCombobox({ value, onChange, allowedSectors }) {
   );
 }
 
-function EntryForm({ entry, sectors, onSave, onCancel }) {
+function EntryForm({ entry, sectors, sectorsCanonical, onSave, onCancel }) {
   const [grupo, setGrupo] = useState(entry ? !!entry.grupo : false);
   const [sector, setSector] = useState(entry && !entry.grupo ? entry.sector : '');
   const [role, setRole] = useState(entry && !entry.grupo ? entry.role : '');
@@ -382,9 +382,13 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
       if (!sector.trim()) {
         e.sector = 'Setor é obrigatório';
       } else {
-        // Restricao: setor deve existir na lista canonica do diretorio.
-        // 'sectors' aqui e' a prop (lista de objetos {sector, ...}).
-        const validos = (sectors || []).map(s => s.sector);
+        // Restricao: setor deve existir na lista canonica vinda de /api/setores
+        // (sectorsCanonical, lista oficial do hub/sistema-chamados). Fallback
+        // para lista derivada de /api/directory (sectors) se a canonica nao
+        // veio (rede offline na montagem etc).
+        const validos = (sectorsCanonical && sectorsCanonical.length > 0)
+          ? sectorsCanonical
+          : (sectors || []).map(s => s.sector);
         if (!validos.includes(sector.trim())) {
           e.sector = 'Selecione um setor existente da lista';
         }
@@ -460,7 +464,9 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
             <>
               <label className="adm-label">Setor *</label>
               <SectorCombobox value={sector}
-                allowedSectors={(sectors || []).map(s => s.sector)}
+                allowedSectors={(sectorsCanonical && sectorsCanonical.length > 0)
+                  ? sectorsCanonical
+                  : (sectors || []).map(s => s.sector)}
                 onChange={v => { setSector(v); if (errors.sector) setErrors({ ...errors, sector: '' }); }} />
               {errors.sector && <span className="adm-field-error">⚠ {errors.sector}</span>}
 
@@ -710,7 +716,7 @@ function HistoryModal({ onClose }) {
   );
 }
 
-function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
+function AdminPanel({ sectors, sectorsCanonical, onClose, onAdd, onEdit, onToggle }) {
   useBodyScrollLock(true);
   useEscToClose(true, onClose);
   const [formOpen, setFormOpen] = useState(false);
@@ -880,6 +886,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
         <EntryForm
           entry={editEntry}
           sectors={sectors}
+          sectorsCanonical={sectorsCanonical}
           onSave={async (data) => {
             const result = editEntry ? await onEdit(editEntry.id, data) : await onAdd(data);
             if (result && result.ok) {
@@ -917,13 +924,9 @@ function App() {
   const [scrolled, setScrolled] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
-  // Modo edicao rapida: lapis em cada card permite editar sem abrir o painel.
-  // Apenas usuarios admin veem o toggle e os lapis; o save continua passando
-  // por requireAdmin no backend (visibilidade no front nao e' barreira real).
-  const [editMode, setEditMode] = useState(false);
-  // Flag para garantir que o auto-on do editMode ao detectar admin acontece
-  // SO UMA VEZ no mount. Se o user desligar manualmente depois, nao religa.
-  const editModeAutoInitRef = useRef(false);
+  // Modo edicao: lapis em cada card permite editar sem abrir o painel.
+  // Politica nova: SEMPRE ativo para admin (derivado, sem state nem toggle).
+  // Save segue protegido por requireAdmin no backend.
   // Entry sendo editada via Modo Edicao (fora do AdminPanel). null = fechado.
   const [quickEdit, setQuickEdit] = useState(null);
   const [allSectors, setAllSectors] = useState(window.GM_DIRECTORY || []);
@@ -943,40 +946,16 @@ function App() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Atalho de teclado "E": alterna Modo Edicao. Ignora quando o foco esta em
-  // input/textarea/select/contenteditable para nao interceptar digitacao.
-  // So funciona se o usuario for admin (mesma condicao do botao).
-  useEffect(() => {
-    function onKey(e) {
-      if (e.key !== 'e' && e.key !== 'E') return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      const t = e.target;
-      const tag = t && t.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-      if (t && t.isContentEditable) return;
-      if (!isAdmin) return;
-      setEditMode(m => !m);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isAdmin]);
+  // Modo Edicao sempre ATIVO para admin — sem state, sem atalho, sem toggle.
+  // Lapis aparece em todos os cards quando isAdmin=true.
+  const editMode = isAdmin;
 
   const [toastApp, setToastApp] = useState('');
   function notifyApp(msg) { setToastApp(msg); setTimeout(() => setToastApp(''), 2800); }
 
   useEffect(() => {
     const m = document.cookie.match(/(?:^|;\s*)hub_tipo=([^;]*)/);
-    if (m && decodeURIComponent(m[1]) === "admin") {
-      setIsAdmin(true);
-      // Modo edicao ja vem ATIVO por default para admins — assim os lapis
-      // aparecem imediatamente sem precisar tocar no toggle. Ref garante
-      // que isto so acontece UMA vez (no mount). Desligamento manual do
-      // user (botao ou tecla E) nao e' revertido por re-execucao do effect.
-      if (!editModeAutoInitRef.current) {
-        setEditMode(true);
-        editModeAutoInitRef.current = true;
-      }
-    }
+    if (m && decodeURIComponent(m[1]) === "admin") setIsAdmin(true);
 
     // AbortController para evitar race condition entre cliques rapidos e cleanup do effect.
     const ac = new AbortController();
@@ -987,15 +966,34 @@ function App() {
       .catch(() => {})
       .finally(() => { setBooting(false); });
 
+    // Polling de /api/setores (fonte canonica do hub/sistema-chamados).
+    // Refresh: a) 30s; b) visibilitychange quando volta a aba; c) window 'focus'
+    // (caso o user volte da outra janela sem trocar de tab); d) se a resposta
+    // trouxer stale=true, marca refresh antecipado.
+    // TODO(SSE): expor /api/setores/stream no backend (require evento no banco
+    // do sistema-chamados quando setor muda). Polling cobre 99% dos casos.
     let pollAc = null;
     let pollTimer = null;
+    let pendingRefetch = null;
     const fetchSetores = () => {
       if (pollAc) pollAc.abort();
       pollAc = new AbortController();
       fetch("/api/setores", { signal: pollAc.signal })
         .then(r => r.ok ? r.json() : null)
-        .then(d => d && setChamadosSetores(d.setores || []))
-        .catch(() => {});
+        .then(d => {
+          if (!d) return;
+          setChamadosSetores(d.setores || []);
+          // stale=true: backend avisou que pode haver dado mais novo —
+          // refetch em 3s para pegar o estado consolidado.
+          if (d.stale) {
+            clearTimeout(pendingRefetch);
+            pendingRefetch = setTimeout(fetchSetores, 3000);
+          }
+        })
+        .catch(err => {
+          // Silencia AbortError (esperado em race). Loga outros para diagnostico.
+          if (err && err.name !== 'AbortError') console.warn('[setores] fetch falhou:', err.message);
+        });
     };
     function startPoll() {
       if (pollTimer) return;
@@ -1005,12 +1003,16 @@ function App() {
     function stopPoll() {
       if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
       if (pollAc) { pollAc.abort(); pollAc = null; }
+      clearTimeout(pendingRefetch);
     }
-    function onVis() { document.hidden ? stopPoll() : startPoll(); }
+    function onVis() { document.hidden ? stopPoll() : (startPoll(), fetchSetores()); }
+    function onFocus() { if (!document.hidden) fetchSetores(); }
     if (!document.hidden) startPoll();
     document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', onFocus);
     return () => {
       document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('focus', onFocus);
       ac.abort();
       stopPoll();
     };
@@ -1098,6 +1100,30 @@ function App() {
     return q.split(/\s+/).every((tok) => hay.includes(tok));
   };
 
+  // Lista canonica de setores para o SectorCombobox: 100% de chamadosSetores
+  // (/api/setores, fonte de verdade do hub/sistema-chamados), com dedup
+  // case-insensitive + trim, ordenada pt-BR. Fallback gracioso: se vazio
+  // ou erro, usa os setores derivados do diretorio para nao quebrar a UI.
+  const setoresCanonicos = useMemo(() => {
+    const fromApi = (chamadosSetores || []).map(s => (s && s.name) || '').filter(Boolean);
+    let base;
+    if (fromApi.length === 0) {
+      console.warn('[setores] usando fallback do diretorio (api/setores vazio ou indisponivel)');
+      base = (allSectors || []).map(s => s.sector || '').filter(Boolean);
+    } else {
+      base = fromApi;
+    }
+    // Dedup case-insensitive + trim, preservando o name canonico
+    // (primeira ocorrencia ganha — backend ja entrega canonico).
+    const seen = new Map();
+    for (const nome of base) {
+      const k = nome.trim().toLowerCase();
+      if (!k || seen.has(k)) continue;
+      seen.set(k, nome.trim());
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [chamadosSetores, allSectors]);
+
   const filtered = useMemo(() => {
     const q = plainNorm(query.trim());
     return publicSectors
@@ -1184,8 +1210,7 @@ function App() {
         scrolled={scrolled}
         isAdmin={isAdmin}
         onAdminClick={() => setShowAdmin(true)}
-        editMode={editMode}
-        onToggleEdit={() => setEditMode(m => !m)}
+        /* editMode/onToggleEdit removidos: modo edicao sempre on para admin */
       />
       <main className="gm-main">
         <GMChrome.Hero query={query} onQuery={setQuery} shown={shown} onClear={clear} />
@@ -1203,6 +1228,7 @@ function App() {
       {showAdmin && (
         <AdminPanel
           sectors={allSectors}
+          sectorsCanonical={setoresCanonicos}
           onClose={() => setShowAdmin(false)}
           onAdd={handleAdd}
           onEdit={handleEdit}
@@ -1213,6 +1239,7 @@ function App() {
         <EntryForm
           entry={quickEdit}
           sectors={allSectors}
+          sectorsCanonical={setoresCanonicos}
           onSave={async (data) => {
             const r = await handleEdit(quickEdit.id, data);
             if (r && r.ok) {

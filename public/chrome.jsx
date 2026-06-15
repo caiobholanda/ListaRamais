@@ -31,7 +31,7 @@ function ThemeToggle({ theme, onToggle }) {
   );
 }
 
-function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick, editMode, onToggleEdit }) {
+function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick }) {
   function sairParaHub() {
     // Captura o tema ATUAL antes de limpar o storage para propagar ao Hub.
     let t = 'light';
@@ -55,18 +55,8 @@ function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick, editMode, on
         <Logo />
         <div className="gm-header__right">
           <span className="gm-datahora" title="Horário de Fortaleza">{dataFmt} · {horaFmt}</span>
-          {isAdmin && (
-            <button
-              className={"gm-edit-mode-btn" + (editMode ? " is-active" : "")}
-              onClick={onToggleEdit}
-              title="Modo edição (atalho: E)"
-              aria-label="Alternar modo edição"
-              aria-pressed={!!editMode}
-            >
-              <IconEdit size="14" sw="1.6" />
-              <span className="gm-edit-mode-btn__label">{editMode ? "Edição ativa" : "Modo edição"}</span>
-            </button>
-          )}
+          {/* Botao 'Modo edicao' removido: para admin o modo edicao agora e'
+              sempre ativo (lapis sempre visivel nos cards). */}
           {isAdmin && (
             <button className="gm-gear-btn" onClick={onAdminClick} title="Gerenciar diretório" aria-label="Gerenciar diretório">
               <IconGear size="18" />

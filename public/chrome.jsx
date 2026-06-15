@@ -1,4 +1,4 @@
-const { useState, useEffect, useRef, useMemo } = React;
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 function Logo() {
   return (

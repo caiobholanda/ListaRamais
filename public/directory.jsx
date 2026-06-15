@@ -263,7 +263,7 @@ function EmptyState({ query, onClear }) {
 // (prop opcional, array de strings). Sem allowedSectors, mantem comportamento
 // antigo (busca /api/setores). Com allowedSectors, digitacao livre NAO chama
 // onChange — onChange so dispara em select() (clique ou Enter em item da lista).
-function SectorCombobox({ value, onChange, allowedSectors }) {
+function SectorCombobox({ value, onChange, allowedSectors, onRefreshSetores }) {
   const [setores, setSetores] = useState([]);
   const [stale, setStale] = useState(false);
   const [query, setQuery] = useState(value || '');
@@ -336,7 +336,12 @@ function SectorCombobox({ value, onChange, allowedSectors }) {
           else if (!e.target.value.trim()) onChange('');
           setOpen(true); setActive(-1);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setOpen(true);
+          // Refresh imediato dos setores: usuario vai usar AGORA — capta
+          // setor novo criado no hub a segundos antes.
+          if (typeof onRefreshSetores === 'function') onRefreshSetores();
+        }}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={handleKey}
       />
@@ -355,7 +360,7 @@ function SectorCombobox({ value, onChange, allowedSectors }) {
   );
 }
 
-function EntryForm({ entry, sectors, sectorsCanonical, onSave, onCancel }) {
+function EntryForm({ entry, sectors, sectorsCanonical, onSave, onCancel, onRefreshSetores }) {
   const [grupo, setGrupo] = useState(entry ? !!entry.grupo : false);
   const [sector, setSector] = useState(entry && !entry.grupo ? entry.sector : '');
   const [role, setRole] = useState(entry && !entry.grupo ? entry.role : '');
@@ -374,6 +379,12 @@ function EntryForm({ entry, sectors, sectorsCanonical, onSave, onCancel }) {
   const waDisabled = celularDigits.length < 10;
   useBodyScrollLock(true);
   useEscToClose(!confirmDup, onCancel);
+  // Refresh dos setores ao MONTAR o modal — garante lista fresca antes do
+  // user comecar a digitar. Sem isso, podia mostrar lista de ate 10s atras.
+  useEffect(() => {
+    if (typeof onRefreshSetores === 'function') onRefreshSetores();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function validate() {
     const e = {};
@@ -470,6 +481,7 @@ function EntryForm({ entry, sectors, sectorsCanonical, onSave, onCancel }) {
                 allowedSectors={(sectorsCanonical && sectorsCanonical.length > 0)
                   ? sectorsCanonical
                   : (sectors || []).map(s => s.sector)}
+                onRefreshSetores={onRefreshSetores}
                 onChange={v => { setSector(v); if (errors.sector) setErrors({ ...errors, sector: '' }); }} />
               {errors.sector && <span className="adm-field-error">⚠ {errors.sector}</span>}
 
@@ -719,7 +731,7 @@ function HistoryModal({ onClose }) {
   );
 }
 
-function AdminPanel({ sectors, sectorsCanonical, onClose, onAdd, onEdit, onToggle }) {
+function AdminPanel({ sectors, sectorsCanonical, onClose, onAdd, onEdit, onToggle, onRefreshSetores }) {
   useBodyScrollLock(true);
   useEscToClose(true, onClose);
   const [formOpen, setFormOpen] = useState(false);
@@ -890,8 +902,12 @@ function AdminPanel({ sectors, sectorsCanonical, onClose, onAdd, onEdit, onToggl
           entry={editEntry}
           sectors={sectors}
           sectorsCanonical={sectorsCanonical}
+          onRefreshSetores={onRefreshSetores}
           onSave={async (data) => {
             const result = editEntry ? await onEdit(editEntry.id, data) : await onAdd(data);
+            // Post-save: refresh imediato (setor pode ter sido criado a partir
+            // de servico/categoria associado, ou alguem mudou no hub).
+            if (result && result.ok && typeof onRefreshSetores === 'function') onRefreshSetores();
             if (result && result.ok) {
               setFormOpen(false);
               notify(editEntry ? 'Ramal atualizado.' : 'Ramal adicionado.');
@@ -932,6 +948,13 @@ function App() {
   // Save segue protegido por requireAdmin no backend.
   // Entry sendo editada via Modo Edicao (fora do AdminPanel). null = fechado.
   const [quickEdit, setQuickEdit] = useState(null);
+  // Ref para refresh programatico de /api/setores — chamada por EntryForm
+  // (mount, save OK) e SectorCombobox (focus no input). Setada dentro do
+  // useEffect que monta o polling para acessar o fetchSetores correto.
+  const refreshSetoresRef = useRef(null);
+  const triggerSetoresRefresh = useCallback(() => {
+    if (refreshSetoresRef.current) refreshSetoresRef.current();
+  }, []);
   const [allSectors, setAllSectors] = useState(window.GM_DIRECTORY || []);
   const [chamadosSetores, setChamadosSetores] = useState([]);
   // True ate o primeiro fetch de /api/directory terminar. Usado pra exibir
@@ -970,15 +993,27 @@ function App() {
       .finally(() => { setBooting(false); });
 
     // Polling de /api/setores (fonte canonica do hub/sistema-chamados).
-    // Refresh: a) 30s; b) visibilitychange quando volta a aba; c) window 'focus'
-    // (caso o user volte da outra janela sem trocar de tab); d) se a resposta
-    // trouxer stale=true, marca refresh antecipado.
+    // Refresh agressivo para captar mudancas rapido:
+    //   a) polling de 10s (era 30s — reduzido para responsividade);
+    //   b) visibilitychange quando volta a aba;
+    //   c) window 'focus' (caso volte de outra janela sem trocar de tab);
+    //   d) flag d.stale do backend agenda refetch antecipado em 1.5s;
+    //   e) PROGRAMATICO: refreshSetoresRef.current() chamado por componentes
+    //      filhos quando o modal abre, ao focar o input de setor, e logo apos
+    //      um save bem-sucedido (que pode ter introduzido setor novo no banco).
     // TODO(SSE): expor /api/setores/stream no backend (require evento no banco
-    // do sistema-chamados quando setor muda). Polling cobre 99% dos casos.
+    // do sistema-chamados quando setor muda). Polling agressivo cobre por
+    // enquanto — instantaneo na pratica para o user que vai criar/editar.
     let pollAc = null;
     let pollTimer = null;
     let pendingRefetch = null;
-    const fetchSetores = () => {
+    let lastFetchTs = 0;
+    const fetchSetores = (force) => {
+      // Throttle: ignora chamadas redundantes em <300ms (ex: focus+visibility
+      // disparados juntos). Force=true (post-save) ignora throttle.
+      const now = Date.now();
+      if (!force && now - lastFetchTs < 300) return;
+      lastFetchTs = now;
       if (pollAc) pollAc.abort();
       pollAc = new AbortController();
       fetch("/api/setores", { signal: pollAc.signal })
@@ -986,22 +1021,21 @@ function App() {
         .then(d => {
           if (!d) return;
           setChamadosSetores(d.setores || []);
-          // stale=true: backend avisou que pode haver dado mais novo —
-          // refetch em 3s para pegar o estado consolidado.
           if (d.stale) {
             clearTimeout(pendingRefetch);
-            pendingRefetch = setTimeout(fetchSetores, 3000);
+            pendingRefetch = setTimeout(() => fetchSetores(true), 1500);
           }
         })
         .catch(err => {
-          // Silencia AbortError (esperado em race). Loga outros para diagnostico.
           if (err && err.name !== 'AbortError') console.warn('[setores] fetch falhou:', err.message);
         });
     };
+    // Expoe refresh para os filhos (EntryForm, SectorCombobox) via ref.
+    refreshSetoresRef.current = () => fetchSetores(true);
     function startPoll() {
       if (pollTimer) return;
       fetchSetores();
-      pollTimer = setInterval(fetchSetores, 30000);
+      pollTimer = setInterval(() => fetchSetores(), 10000);
     }
     function stopPoll() {
       if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -1018,6 +1052,7 @@ function App() {
       window.removeEventListener('focus', onFocus);
       ac.abort();
       stopPoll();
+      refreshSetoresRef.current = null;
     };
   }, []);
 
@@ -1236,6 +1271,7 @@ function App() {
           onAdd={handleAdd}
           onEdit={handleEdit}
           onToggle={handleToggle}
+          onRefreshSetores={triggerSetoresRefresh}
         />
       )}
       {quickEdit && (
@@ -1243,6 +1279,7 @@ function App() {
           entry={quickEdit}
           sectors={allSectors}
           sectorsCanonical={setoresCanonicos}
+          onRefreshSetores={triggerSetoresRefresh}
           onSave={async (data) => {
             const r = await handleEdit(quickEdit.id, data);
             if (r && r.ok) {

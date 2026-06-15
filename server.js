@@ -147,12 +147,17 @@ const GRUPO_SECTOR = 'Grupos de Transferência';
 const GRUPO_SHORT = 'Grupos Transferência';
 
 app.post('/api/directory', requireAdmin, (req, res) => {
-  const { sector, short, role, names, ext, grupo } = req.body;
+  const { sector, short, role, names, email, ext, grupo } = req.body;
   const isGrupo = !!grupo;
   if (isGrupo) {
     if (!ext) return res.status(400).json({ ok: false, erro: 'ext obrigatório' });
   } else {
     if (!sector || !role || !ext) return res.status(400).json({ ok: false, erro: 'sector, role e ext são obrigatórios' });
+  }
+  // E-mail opcional — valida formato basico se preenchido.
+  const emailNorm = (email || '').toString().trim();
+  if (emailNorm && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
+    return res.status(400).json({ ok: false, erro: 'E-mail inválido' });
   }
   const data = loadDir();
   const id = nextId(data);
@@ -165,8 +170,8 @@ app.post('/api/directory', requireAdmin, (req, res) => {
     if (!sec) { sec = { sector, short: short || sector, entries: [] }; data.push(sec); }
   }
   const newEntry = isGrupo
-    ? { id, role: '', names: names || '', ext, active: true, grupo: true }
-    : { id, role, names: names || '', ext, active: true, grupo: false, pendente: false };
+    ? { id, role: '', names: names || '', email: emailNorm || '', ext, active: true, grupo: true }
+    : { id, role, names: names || '', email: emailNorm || '', ext, active: true, grupo: false, pendente: false };
   sec.entries.push(newEntry);
   saveDir(data);
   pushHist(id, 'criado', req.hubUser, null,
@@ -180,12 +185,16 @@ app.post('/api/directory', requireAdmin, (req, res) => {
 
 app.put('/api/directory/:id', requireAdmin, (req, res) => {
   const id = parseInt(req.params.id);
-  const { sector, short, role, names, ext, grupo } = req.body;
+  const { sector, short, role, names, email, ext, grupo } = req.body;
   const isGrupo = !!grupo;
   if (isGrupo) {
     if (!ext) return res.status(400).json({ ok: false, erro: 'ext obrigatório' });
   } else {
     if (!role || !ext) return res.status(400).json({ ok: false, erro: 'role e ext são obrigatórios' });
+  }
+  const emailNorm = (email || '').toString().trim();
+  if (emailNorm && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
+    return res.status(400).json({ ok: false, erro: 'E-mail inválido' });
   }
   const data = loadDir();
   let entry, oldSector;
@@ -205,8 +214,8 @@ app.put('/api/directory/:id', requireAdmin, (req, res) => {
     else if (short) targetSec.short = short;
   }
   const updated = isGrupo
-    ? { id: entry.id, role: '', names: names || '', ext, active: entry.active, grupo: true }
-    : { id: entry.id, role, names: names || '', ext, active: entry.active, grupo: false, pendente: false };
+    ? { id: entry.id, role: '', names: names || '', email: emailNorm || '', ext, active: entry.active, grupo: true }
+    : { id: entry.id, role, names: names || '', email: emailNorm || '', ext, active: entry.active, grupo: false, pendente: false };
   targetSec.entries.push(updated);
   saveDir(data);
   const fieldsChanged =

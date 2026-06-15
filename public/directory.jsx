@@ -63,6 +63,13 @@ function Entry({ item, query }) {
                 {isToll ? "Discagem gratuita" : "Ramal de setor"}
               </p>
             )}
+            {item.email && (
+              <p className="gm-row__names" style={{ marginTop: 2 }}>
+                <a href={`mailto:${item.email}`} style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'currentColor', textUnderlineOffset: 2 }}>
+                  {item.email}
+                </a>
+              </p>
+            )}
           </>
         )}
       </div>
@@ -222,6 +229,7 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
   const [sector, setSector] = useState(entry && !entry.grupo ? entry.sector : '');
   const [role, setRole] = useState(entry && !entry.grupo ? entry.role : '');
   const [names, setNames] = useState(entry ? entry.names : '');
+  const [email, setEmail] = useState(entry && entry.email ? entry.email : '');
   const [ext, setExt] = useState(entry ? entry.ext : '');
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -233,6 +241,11 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
     if (!grupo) {
       if (!sector.trim()) e.sector = 'Setor é obrigatório';
       if (!role.trim()) e.role = 'Cargo é obrigatório';
+    }
+    // E-mail e' opcional, mas se preenchido valida formato basico.
+    const emailTrim = email.trim();
+    if (emailTrim && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+      e.email = 'E-mail inválido';
     }
     setErrors(e);
     return !Object.keys(e).length;
@@ -248,9 +261,10 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
       if (!window.confirm(`Ramal ${ext} já está em uso:\n${where}\n\nSalvar mesmo assim?`)) return;
     }
     setSaving(true);
+    const emailFinal = email.trim() || null;
     const payload = grupo
-      ? { grupo: true, names: names.trim(), ext: ext.trim() }
-      : { grupo: false, sector: sector.trim(), short: (sectors.find(s => s.sector === sector)?.short || sector.split(/[\s/]/)[0]), role: role.trim(), names: names.trim(), ext: ext.trim() };
+      ? { grupo: true, names: names.trim(), email: emailFinal, ext: ext.trim() }
+      : { grupo: false, sector: sector.trim(), short: (sectors.find(s => s.sector === sector)?.short || sector.split(/[\s/]/)[0]), role: role.trim(), names: names.trim(), email: emailFinal, ext: ext.trim() };
     const result = await onSave(payload);
     if (result && result.ok === false) {
       setApiError(result.erro || 'Erro ao salvar');
@@ -264,7 +278,7 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
     <div className="adm-modal-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="adm-modal">
         <div className="adm-modal__header">
-          <span>{entry ? 'Editar Ramal' : 'Adicionar Ramal'}</span>
+          <span>{entry ? 'Editar Contato' : 'Adicionar Contato'}</span>
           <button className="adm-close-sm" onClick={onCancel} aria-label="Fechar"><IconClose size="16" /></button>
         </div>
         <div className="adm-modal__body">
@@ -298,6 +312,14 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
           <label className="adm-label">{grupo ? 'Nome do Grupo' : 'Nomes'}</label>
           <input className="adm-input" value={names} onChange={e => setNames(e.target.value)}
             placeholder={grupo ? 'Ex: Recepção Geral' : 'Ex: João Silva / Maria Santos'} />
+
+          <label className="adm-label">E-mail</label>
+          <input className={'adm-input' + (errors.email ? ' adm-input--err' : '')}
+            type="email"
+            value={email}
+            onChange={e => { setEmail(e.target.value); if (errors.email) setErrors({ ...errors, email: '' }); }}
+            placeholder="exemplo@granmarquise.com.br" />
+          {errors.email && <span className="adm-field-error">{errors.email}</span>}
 
           <label className="adm-label">Ramal / Número *</label>
           <input className={'adm-input' + (errors.ext ? ' adm-input--err' : '')}

@@ -199,6 +199,13 @@ const DISPLAY_ALIAS = {
 function displayName(s) { return DISPLAY_ALIAS[s] || s; }
 
 function Section({ data, query, index, editMode, isAdmin, onQuickEdit }) {
+  // BUGFIX: ao editar pelo Modo Edicao, o item vem direto de data.entries —
+  // que NAO inclui 'sector' (so role/names/ext/celular/...). Sem isso o
+  // EntryForm abria com o campo Setor VAZIO em modo edicao via lapis.
+  // Injetar sector+short do data pai antes de propagar para onQuickEdit.
+  const handleQuickEdit = onQuickEdit
+    ? (item) => onQuickEdit({ ...item, sector: data.sector, short: data.short })
+    : null;
   return (
     <section className="gm-section" aria-labelledby={"sec-" + slug(data.sector)}>
       <div className="gm-section__head">
@@ -212,7 +219,7 @@ function Section({ data, query, index, editMode, isAdmin, onQuickEdit }) {
       </div>
       <div className="gm-grid">
         {data.entries.map((item, i) => <Entry key={data.sector + i} item={item} query={query}
-          editMode={editMode} isAdmin={isAdmin} onQuickEdit={onQuickEdit} />)}
+          editMode={editMode} isAdmin={isAdmin} onQuickEdit={handleQuickEdit} />)}
       </div>
     </section>
   );
@@ -387,7 +394,11 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
     // E-mail e' opcional, mas se preenchido valida formato basico.
     const emailTrim = email.trim();
     if (emailTrim && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
-      e.email = 'E-mail inválido';
+      e.email = 'E-mail inválido (use formato nome@dominio.com)';
+    }
+    // Celular: opcional, mas se preenchido exige 10 ou 11 digitos.
+    if (celularDigits.length > 0 && celularDigits.length < 10) {
+      e.celular = 'Celular incompleto (precisa 10 ou 11 dígitos)';
     }
     setErrors(e);
     return !Object.keys(e).length;
@@ -451,14 +462,14 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
               <SectorCombobox value={sector}
                 allowedSectors={(sectors || []).map(s => s.sector)}
                 onChange={v => { setSector(v); if (errors.sector) setErrors({ ...errors, sector: '' }); }} />
-              {errors.sector && <span className="adm-field-error">{errors.sector}</span>}
+              {errors.sector && <span className="adm-field-error">⚠ {errors.sector}</span>}
 
               <label className="adm-label">Cargo / Função *</label>
               <input className={'adm-input' + (errors.role ? ' adm-input--err' : '')}
                 value={role}
                 onChange={e => { setRole(e.target.value); if (errors.role) setErrors({ ...errors, role: '' }); }}
                 placeholder="Ex: Gerente de Recepção" />
-              {errors.role && <span className="adm-field-error">{errors.role}</span>}
+              {errors.role && <span className="adm-field-error">⚠ {errors.role}</span>}
             </>
           )}
 
@@ -472,19 +483,21 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
             value={email}
             onChange={e => { setEmail(e.target.value); if (errors.email) setErrors({ ...errors, email: '' }); }}
             placeholder="exemplo@granmarquise.com.br" />
-          {errors.email && <span className="adm-field-error">{errors.email}</span>}
+          {errors.email && <span className="adm-field-error">⚠ {errors.email}</span>}
 
           <label className="adm-label">Celular</label>
-          <input className="adm-input"
+          <input className={'adm-input' + (errors.celular ? ' adm-input--err' : '')}
             type="tel" inputMode="numeric" autoComplete="tel"
             value={celular}
             onChange={e => {
               setCelular(_fmtCelular(e.target.value));
+              if (errors.celular) setErrors({ ...errors, celular: '' });
               // Se o usuario apagar o celular, desliga WhatsApp automaticamente
               // para nao salvar isWhatsapp=true sem numero.
               if (!_celularDigits(e.target.value)) setIsWhatsapp(false);
             }}
             placeholder="(85) 99999-9999" />
+          {errors.celular && <span className="adm-field-error">⚠ {errors.celular}</span>}
 
           <label className="adm-checkbox-row" style={{ opacity: waDisabled ? 0.5 : 1 }}>
             <input type="checkbox" checked={isWhatsapp && !waDisabled}
@@ -498,7 +511,7 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
             value={ext}
             onChange={e => { setExt(e.target.value); if (errors.ext) setErrors({ ...errors, ext: '' }); }}
             placeholder="Ex: 5001" />
-          {errors.ext && <span className="adm-field-error">{errors.ext}</span>}
+          {errors.ext && <span className="adm-field-error">⚠ {errors.ext}</span>}
         </div>
         <div className="adm-modal__footer">
           <button className="adm-btn adm-btn--ghost" onClick={onCancel}>Cancelar</button>

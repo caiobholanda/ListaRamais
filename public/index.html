@@ -263,6 +263,38 @@
   }
   .gm-gear-btn:hover { color: var(--accent); border-color: var(--accent); }
 
+  /* Botao "Modo edicao" — visivel apenas para admin. Toggle com indicacao
+     visual (badge accent quando ativo). Atalho de teclado: E. */
+  .gm-edit-mode-btn {
+    height: 36px; padding: 0 12px; border-radius: var(--r-sm);
+    border: 1px solid var(--line-strong); background: transparent;
+    color: var(--fg-soft); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    transition: all var(--dur-fast) var(--ease); white-space: nowrap;
+  }
+  .gm-edit-mode-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .gm-edit-mode-btn.is-active {
+    background: var(--accent); color: var(--on-ink); border-color: var(--accent);
+  }
+  @media (max-width: 620px) { .gm-edit-mode-btn__label { display: none; } }
+
+  /* Modo edicao: realce sutil + cursor pointer no card. O lapis fica oculto
+     ate o modo ser ativado pelo toggle no header. */
+  .gm-row--editavel {
+    outline: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
+    outline-offset: 2px; border-radius: 4px;
+  }
+  .gm-row__edit {
+    width: 26px; height: 26px; border-radius: var(--r-sm);
+    border: 1px solid var(--line); background: transparent;
+    color: var(--fg-muted); cursor: pointer;
+    display: grid; place-items: center; margin-left: 4px;
+    transition: all var(--dur-fast) var(--ease);
+  }
+  .gm-row__edit:hover { color: var(--accent); border-color: var(--accent); }
+
   /* Botao "Sair" — mesmas dimensoes verticais do gear, mas com texto + icone
      alinhados horizontalmente e centralizados. */
   .gm-sair-btn {

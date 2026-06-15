@@ -39,15 +39,16 @@ function useCopy() {
   return [copied, copy];
 }
 
-function Entry({ item, query }) {
+function Entry({ item, query, editMode, isAdmin, onQuickEdit }) {
   const [copied, copy] = useCopy();
   const [copiedEmail, copyEmail] = useCopy();
   const compact = item.ext.replace(/\s/g, "");
   const isToll = /^0800/.test(compact);
   const isLong = compact.length > 6;
   const isGrupo = !!item.grupo;
+  const showEdit = editMode && isAdmin && typeof onQuickEdit === 'function';
   return (
-    <article className="gm-row">
+    <article className={"gm-row" + (showEdit ? " gm-row--editavel" : "")}>
       <div className="gm-row__body">
         {isGrupo ? (
           <>
@@ -86,6 +87,12 @@ function Entry({ item, query }) {
           aria-label="Copiar número" title={copied ? "Copiado!" : "Copiar"}>
           {copied ? <IconCheck size="15" /> : <IconCopy size="15" />}
         </button>
+        {showEdit && (
+          <button className="gm-row__edit" onClick={() => onQuickEdit(item)}
+            aria-label="Editar ramal" title="Editar contato (Modo edição)">
+            <IconEdit size="14" sw="1.6" />
+          </button>
+        )}
       </div>
     </article>
   );
@@ -100,7 +107,7 @@ const DISPLAY_ALIAS = {
 };
 function displayName(s) { return DISPLAY_ALIAS[s] || s; }
 
-function Section({ data, query, index }) {
+function Section({ data, query, index, editMode, isAdmin, onQuickEdit }) {
   return (
     <section className="gm-section" aria-labelledby={"sec-" + slug(data.sector)}>
       <div className="gm-section__head">
@@ -113,7 +120,8 @@ function Section({ data, query, index }) {
         <span className="gm-section__count">{String(data.entries.length).padStart(2, "0")}</span>
       </div>
       <div className="gm-grid">
-        {data.entries.map((item, i) => <Entry key={data.sector + i} item={item} query={query} />)}
+        {data.entries.map((item, i) => <Entry key={data.sector + i} item={item} query={query}
+          editMode={editMode} isAdmin={isAdmin} onQuickEdit={onQuickEdit} />)}
       </div>
     </section>
   );
@@ -153,7 +161,11 @@ function EmptyState({ query, onClear }) {
 
 // ── Admin Panel ──────────────────────────────────────────────────────────────
 
-function SectorCombobox({ value, onChange }) {
+// SectorCombobox restrito: aceita apenas valores presentes em allowedSectors
+// (prop opcional, array de strings). Sem allowedSectors, mantem comportamento
+// antigo (busca /api/setores). Com allowedSectors, digitacao livre NAO chama
+// onChange — onChange so dispara em select() (clique ou Enter em item da lista).
+function SectorCombobox({ value, onChange, allowedSectors }) {
   const [setores, setSetores] = useState([]);
   const [stale, setStale] = useState(false);
   const [query, setQuery] = useState(value || '');
@@ -162,6 +174,14 @@ function SectorCombobox({ value, onChange }) {
   const dropRef = useRef(null);
 
   useEffect(() => {
+    // Quando allowedSectors e' passado, a lista canonica e' essa — pular o fetch
+    // pra nao misturar setores de /api/setores (sistema-chamados) com a lista
+    // restrita do diretorio.
+    if (Array.isArray(allowedSectors)) {
+      setSetores(allowedSectors.slice().sort((a, b) => a.localeCompare(b, 'pt')).map(name => ({ name })));
+      setStale(false);
+      return;
+    }
     const ac = new AbortController();
     fetch('/api/setores', { signal: ac.signal })
       .then(r => r.ok ? r.json() : null)
@@ -172,7 +192,7 @@ function SectorCombobox({ value, onChange }) {
       })
       .catch(() => {});
     return () => ac.abort();
-  }, []);
+  }, [allowedSectors]);
 
   const filtered = useMemo(() => {
     const q = plainNorm(query.trim());
@@ -202,6 +222,7 @@ function SectorCombobox({ value, onChange }) {
     }
   }, [active, open]);
 
+  const restrito = Array.isArray(allowedSectors);
   return (
     <div className="adm-combo">
       <input
@@ -209,7 +230,14 @@ function SectorCombobox({ value, onChange }) {
         value={query}
         placeholder="Buscar setor…"
         autoComplete="off"
-        onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); setActive(-1); }}
+        onChange={e => {
+          setQuery(e.target.value);
+          // Modo restrito: digitacao livre nao seta sector — exige select() de
+          // item da lista. Modo legado (sem allowedSectors): mantem comportamento.
+          if (!restrito) onChange(e.target.value);
+          else if (!e.target.value.trim()) onChange('');
+          setOpen(true); setActive(-1);
+        }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={handleKey}
@@ -244,7 +272,16 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
     const e = {};
     if (!ext.trim()) e.ext = 'Ramal é obrigatório';
     if (!grupo) {
-      if (!sector.trim()) e.sector = 'Setor é obrigatório';
+      if (!sector.trim()) {
+        e.sector = 'Setor é obrigatório';
+      } else {
+        // Restricao: setor deve existir na lista canonica do diretorio.
+        // 'sectors' aqui e' a prop (lista de objetos {sector, ...}).
+        const validos = (sectors || []).map(s => s.sector);
+        if (!validos.includes(sector.trim())) {
+          e.sector = 'Selecione um setor existente da lista';
+        }
+      }
       if (!role.trim()) e.role = 'Cargo é obrigatório';
     }
     // E-mail e' opcional, mas se preenchido valida formato basico.
@@ -302,7 +339,9 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
           {!grupo && (
             <>
               <label className="adm-label">Setor *</label>
-              <SectorCombobox value={sector} onChange={v => { setSector(v); if (errors.sector) setErrors({ ...errors, sector: '' }); }} />
+              <SectorCombobox value={sector}
+                allowedSectors={(sectors || []).map(s => s.sector)}
+                onChange={v => { setSector(v); if (errors.sector) setErrors({ ...errors, sector: '' }); }} />
               {errors.sector && <span className="adm-field-error">{errors.sector}</span>}
 
               <label className="adm-label">Cargo / Função *</label>
@@ -694,6 +733,12 @@ function App() {
   const [scrolled, setScrolled] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  // Modo edicao rapida: lapis em cada card permite editar sem abrir o painel.
+  // Apenas usuarios admin veem o toggle e os lapis; o save continua passando
+  // por requireAdmin no backend (visibilidade no front nao e' barreira real).
+  const [editMode, setEditMode] = useState(false);
+  // Entry sendo editada via Modo Edicao (fora do AdminPanel). null = fechado.
+  const [quickEdit, setQuickEdit] = useState(null);
   const [allSectors, setAllSectors] = useState(window.GM_DIRECTORY || []);
   const [chamadosSetores, setChamadosSetores] = useState([]);
   // True ate o primeiro fetch de /api/directory terminar. Usado pra exibir
@@ -710,6 +755,24 @@ function App() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Atalho de teclado "E": alterna Modo Edicao. Ignora quando o foco esta em
+  // input/textarea/select/contenteditable para nao interceptar digitacao.
+  // So funciona se o usuario for admin (mesma condicao do botao).
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key !== 'e' && e.key !== 'E') return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target;
+      const tag = t && t.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (t && t.isContentEditable) return;
+      if (!isAdmin) return;
+      setEditMode(m => !m);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isAdmin]);
 
   const [toastApp, setToastApp] = useState('');
   function notifyApp(msg) { setToastApp(msg); setTimeout(() => setToastApp(''), 2800); }
@@ -897,6 +960,8 @@ function App() {
         scrolled={scrolled}
         isAdmin={isAdmin}
         onAdminClick={() => setShowAdmin(true)}
+        editMode={editMode}
+        onToggleEdit={() => setEditMode(m => !m)}
       />
       <main className="gm-main">
         <GMChrome.Hero query={query} onQuery={setQuery} shown={shown} onClear={clear} />
@@ -906,7 +971,8 @@ function App() {
             ? <DirectorySkeleton />
             : filtered.length === 0
               ? <EmptyState query={query} onClear={clear} />
-              : filtered.map((s, i) => <Section key={s.sector} data={s} query={query} index={i + 1} />)}
+              : filtered.map((s, i) => <Section key={s.sector} data={s} query={query} index={i + 1}
+                  editMode={editMode} isAdmin={isAdmin} onQuickEdit={setQuickEdit} />)}
         </div>
       </main>
 
@@ -917,6 +983,21 @@ function App() {
           onAdd={handleAdd}
           onEdit={handleEdit}
           onToggle={handleToggle}
+        />
+      )}
+      {quickEdit && (
+        <EntryForm
+          entry={quickEdit}
+          sectors={allSectors}
+          onSave={async (data) => {
+            const r = await handleEdit(quickEdit.id, data);
+            if (r && r.ok) {
+              setQuickEdit(null);
+              notifyApp('Contato atualizado.');
+            }
+            return r;
+          }}
+          onCancel={() => setQuickEdit(null)}
         />
       )}
       {toastApp && <div className="adm-toast adm-toast--app">{toastApp}</div>}

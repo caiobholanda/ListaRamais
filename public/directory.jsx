@@ -41,6 +41,7 @@ function useCopy() {
 
 function Entry({ item, query }) {
   const [copied, copy] = useCopy();
+  const [copiedEmail, copyEmail] = useCopy();
   const compact = item.ext.replace(/\s/g, "");
   const isToll = /^0800/.test(compact);
   const isLong = compact.length > 6;
@@ -64,10 +65,14 @@ function Entry({ item, query }) {
               </p>
             )}
             {item.email && (
-              <p className="gm-row__names" style={{ marginTop: 2 }}>
+              <p className="gm-row__names gm-row__email" style={{ marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <a href={`mailto:${item.email}`} style={{ color: 'inherit', textDecoration: 'underline', textDecorationColor: 'currentColor', textUnderlineOffset: 2 }}>
                   {item.email}
                 </a>
+                <button className="gm-row__copy gm-row__copy--email" onClick={() => copyEmail(item.email)}
+                  aria-label="Copiar e-mail" title={copiedEmail ? "Copiado!" : "Copiar e-mail"}>
+                  {copiedEmail ? <IconCheck size="13" /> : <IconCopy size="13" />}
+                </button>
               </p>
             )}
           </>
@@ -384,7 +389,7 @@ function HistoryModal({ onClose }) {
     marcado_grupo: 'adm-hist-badge--edit', desmarcado_grupo: 'adm-hist-badge--edit',
     realocado: 'adm-hist-badge--edit',
   };
-  const FIELD_LABEL = { sector: 'Setor', role: 'Cargo', names: 'Nomes', ext: 'Ramal', nome: 'Nome', grupo: 'Grupo', pendente: 'Pendente' };
+  const FIELD_LABEL = { sector: 'Setor', role: 'Cargo', names: 'Nomes', email: 'E-mail', ext: 'Ramal', nome: 'Nome', grupo: 'Grupo', pendente: 'Pendente' };
   function fmtVal(k, v) {
     if (k === 'grupo' || k === 'pendente') return v ? 'Sim' : 'Não';
     return v || '—';
@@ -518,6 +523,8 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
   const [editEntry, setEditEntry] = useState(null);
   const [filterSector, setFilterSector] = useState("all");
   const [filterText, setFilterText] = useState("");
+  // 'all' | 'active' | 'inactive'. Combina com filterSector e filterText.
+  const [filterStatus, setFilterStatus] = useState("all");
   // filterTextDebounced e o que efetivamente alimenta o useMemo: evita refiltrar
   // os ~100 itens a cada tecla. 300ms e suficiente para parecer instantaneo
   // sem disparar 5+ renders por palavra.
@@ -545,12 +552,15 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
     const q = plainNorm(filterTextDebounced.trim());
     return allEntries
       .filter(e => filterSector === "all" || e.sector === filterSector)
-      .filter(e => !q || plainNorm([e.role, e.names, e.ext, e.sector].join(" ")).includes(q))
+      // 'active' = entry.active !== false (default true). 'inactive' = explicitamente false.
+      .filter(e => filterStatus === "all" || (filterStatus === "active" ? e.active !== false : e.active === false))
+      // Busca textual: cargo, nomes, ramal, setor, email (todos normalizados).
+      .filter(e => !q || plainNorm([e.role, e.names, e.ext, e.sector, e.email || ""].join(" ")).includes(q))
       .sort((a, b) => {
         const c = a.sector.localeCompare(b.sector, 'pt');
         return c !== 0 ? c : a.id - b.id;
       });
-  }, [allEntries, filterSector, filterTextDebounced]);
+  }, [allEntries, filterSector, filterStatus, filterTextDebounced]);
 
   return (
     <>
@@ -573,7 +583,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
             type="search"
             value={filterText}
             onChange={e => setFilterText(e.target.value)}
-            placeholder="Filtrar por cargo, nome, ramal…"
+            placeholder="Filtrar por cargo, nome, ramal, e-mail…"
             autoComplete="off"
           />
           <select className="adm-filter-select" value={filterSector}
@@ -581,6 +591,21 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
             <option value="all">Todos os setores</option>
             {sectors.slice().sort((a, b) => a.sector.localeCompare(b.sector, 'pt')).map(s => <option key={s.sector} value={s.sector}>{displayName(s.sector) === s.sector ? s.short : displayName(s.sector)}</option>)}
           </select>
+          {/* Filtro de status: combinado com setor + texto. 'Todos' por default. */}
+          <div className="adm-status-group" role="group" aria-label="Filtrar por status">
+            {[
+              { v: "all",      l: "Todos" },
+              { v: "active",   l: "Ativos" },
+              { v: "inactive", l: "Inativos" },
+            ].map(opt => (
+              <button key={opt.v}
+                className={"adm-status-btn" + (filterStatus === opt.v ? " is-active" : "")}
+                onClick={() => setFilterStatus(opt.v)}
+                aria-pressed={filterStatus === opt.v}>
+                {opt.l}
+              </button>
+            ))}
+          </div>
           <span className="adm-count">{visible.length} {visible.length === 1 ? "ramal" : "ramais"}</span>
         </div>
 
@@ -589,6 +614,7 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
             <span>Setor</span>
             <span>Cargo</span>
             <span>Nomes</span>
+            <span>E-mail</span>
             <span>Ramal</span>
             <span>Status</span>
             <span></span>
@@ -600,6 +626,11 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
                 {entry.grupo ? <span className="adm-grupo-tag">Grupo de Transferência</span> : entry.role}
               </span>
               <span className="adm-cell adm-cell--names">{entry.names || <em className="adm-empty">—</em>}</span>
+              <span className="adm-cell adm-cell--email" title={entry.email || ''}>
+                {entry.email
+                  ? <a href={`mailto:${entry.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>{entry.email}</a>
+                  : <em className="adm-empty">—</em>}
+              </span>
               <span className="adm-cell adm-cell--ext">{entry.ext}</span>
               <span className="adm-cell">
                 <span className={"adm-badge" + (entry.active !== false ? " adm-badge--on" : " adm-badge--off")}>

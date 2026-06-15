@@ -356,16 +356,35 @@
   /* ── Admin list ── */
   .adm-list { flex: 1; overflow-y: auto; }
   .adm-list-head {
-    display: grid; grid-template-columns: 90px 1fr 1fr 80px 70px 80px;
+    display: grid; grid-template-columns: 90px 1fr 1fr 1.2fr 80px 70px 80px;
     padding: 9px 22px; background: var(--surface); border-bottom: 1px solid var(--line);
     font-family: var(--font-mono); font-size: 0.62rem; font-weight: 500;
     letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted);
     position: sticky; top: 0; z-index: 2;
   }
   .adm-row {
-    display: grid; grid-template-columns: 90px 1fr 1fr 80px 70px 80px;
+    display: grid; grid-template-columns: 90px 1fr 1fr 1.2fr 80px 70px 80px;
     padding: 12px 22px; border-bottom: 1px solid var(--line);
     align-items: center; transition: background var(--dur-fast);
+  }
+  .adm-cell--email { color: var(--fg-muted); font-size: 0.78rem; }
+  .adm-cell--email a:hover { color: var(--accent); text-decoration: underline; }
+
+  /* Filtro de status: 3 botoes segmentados que se combinam com setor + texto. */
+  .adm-status-group {
+    display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+    overflow: hidden; flex: none;
+  }
+  .adm-status-btn {
+    padding: 8px 14px; border: none; background: transparent; cursor: pointer;
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted);
+    border-right: 1px solid var(--line); transition: all var(--dur-fast);
+  }
+  .adm-status-btn:last-child { border-right: none; }
+  .adm-status-btn:hover { color: var(--fg); background: var(--surface-hover); }
+  .adm-status-btn.is-active {
+    background: var(--accent); color: var(--on-ink);
   }
   .adm-row:hover { background: var(--surface-hover); }
   .adm-row--off { opacity: 0.45; }
@@ -466,7 +485,11 @@
   @media (max-width: 700px) {
     .adm-panel { width: 100vw; }
     .adm-list-head, .adm-row { grid-template-columns: 70px 1fr 70px 60px 72px; }
-    .adm-cell--names, .adm-list-head > span:nth-child(3) { display: none; }
+    /* Esconde Nomes (3) e E-mail (4) no mobile para nao apertar colunas-chave. */
+    .adm-cell--names, .adm-list-head > span:nth-child(3),
+    .adm-cell--email, .adm-list-head > span:nth-child(4) { display: none; }
+    /* Segmented status: encurta padding/texto. */
+    .adm-status-btn { padding: 7px 9px; font-size: 0.6rem; letter-spacing: 0.08em; }
   }
 
   /* ── History modal ── */

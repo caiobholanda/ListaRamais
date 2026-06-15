@@ -29,6 +29,69 @@ function Highlight({ text, query }) {
   return out;
 }
 
+// Scroll lock global do <body> enquanto algum overlay esta aberto. Usa
+// contador no dataset para suportar varios overlays simultaneos (ex.: form
+// de adicionar abre confirm de ramal duplicado). So remove a classe quando
+// o ULTIMO overlay fecha.
+function useBodyScrollLock(active) {
+  useEffect(() => {
+    if (!active) return;
+    const body = document.body;
+    const prev = parseInt(body.dataset.lockCount || '0', 10);
+    body.dataset.lockCount = String(prev + 1);
+    if (prev === 0) body.classList.add('modal-open');
+    return () => {
+      const next = parseInt(body.dataset.lockCount || '1', 10) - 1;
+      if (next <= 0) {
+        body.classList.remove('modal-open');
+        delete body.dataset.lockCount;
+      } else {
+        body.dataset.lockCount = String(next);
+      }
+    };
+  }, [active]);
+}
+
+// Listener global de ESC para fechar overlays. Cada componente passa onClose
+// e o hook so registra/desregistra automaticamente.
+function useEscToClose(active, onClose) {
+  useEffect(() => {
+    if (!active) return;
+    function onKey(e) { if (e.key === 'Escape') onClose(); }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [active, onClose]);
+}
+
+// Dialogo de confirmacao in-app que reusa as classes do modal de cadastro.
+// Substitui window.confirm() — mantem o visual dark/dourado e respeita ESC,
+// scroll lock e centralizacao. Mensagem multilinha preservada via white-space.
+function ConfirmDialog({ title, message, confirmLabel, cancelLabel, danger, onConfirm, onCancel }) {
+  useBodyScrollLock(true);
+  useEscToClose(true, onCancel);
+  return (
+    <div className="adm-modal-overlay" style={{ zIndex: 300 }}
+      onClick={e => e.target === e.currentTarget && onCancel()}>
+      <div className="adm-modal" style={{ maxWidth: 420 }}>
+        <div className="adm-modal__header">
+          <span>{title || 'Confirmar'}</span>
+        </div>
+        <div className="adm-modal__body">
+          <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-body)', fontSize: '0.92rem', color: 'var(--fg)', lineHeight: 1.5 }}>
+            {message}
+          </div>
+        </div>
+        <div className="adm-modal__footer">
+          <button className="adm-btn adm-btn--ghost" onClick={onCancel} autoFocus>{cancelLabel || 'Cancelar'}</button>
+          <button className={"adm-btn " + (danger ? "adm-btn--gold" : "adm-btn--gold")} onClick={onConfirm}>
+            {confirmLabel || 'Confirmar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function useCopy() {
   const [copied, setCopied] = useState(false);
   const copy = (val) => {
@@ -298,8 +361,12 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
+  // Confirmacao de ramal duplicado: in-app, substitui window.confirm nativo.
+  const [confirmDup, setConfirmDup] = useState(null); // { msg } | null
   const celularDigits = _celularDigits(celular);
   const waDisabled = celularDigits.length < 10;
+  useBodyScrollLock(true);
+  useEscToClose(!confirmDup, onCancel);
 
   function validate() {
     const e = {};
@@ -326,15 +393,8 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
     return !Object.keys(e).length;
   }
 
-  async function handleSave() {
-    setApiError('');
-    if (!validate()) return;
-    const all = sectors.flatMap(s => s.entries.map(x => ({ ...x, _sector: s.sector })));
-    const dup = all.find(x => x.ext.trim() === ext.trim() && x.id !== entry?.id);
-    if (dup) {
-      const where = dup.grupo ? 'Grupo de Transferência' : `${dup.role} · ${dup._sector}`;
-      if (!window.confirm(`Ramal ${ext} já está em uso:\n${where}\n\nSalvar mesmo assim?`)) return;
-    }
+  async function _doSave() {
+    setConfirmDup(null);
     setSaving(true);
     const emailFinal = email.trim() || null;
     // Persiste celular como string de digitos (formato canonico, facil de
@@ -351,6 +411,18 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
       return;
     }
     setSaving(false);
+  }
+  async function handleSave() {
+    setApiError('');
+    if (!validate()) return;
+    const all = sectors.flatMap(s => s.entries.map(x => ({ ...x, _sector: s.sector })));
+    const dup = all.find(x => x.ext.trim() === ext.trim() && x.id !== entry?.id);
+    if (dup) {
+      const where = dup.grupo ? 'Grupo de Transferência' : `${dup.role} · ${dup._sector}`;
+      setConfirmDup({ msg: `Ramal ${ext} já está em uso:\n${where}\n\nSalvar mesmo assim?` });
+      return;
+    }
+    await _doSave();
   }
 
   return (
@@ -435,11 +507,23 @@ function EntryForm({ entry, sectors, onSave, onCancel }) {
           </button>
         </div>
       </div>
+      {confirmDup && (
+        <ConfirmDialog
+          title="Ramal já em uso"
+          message={confirmDup.msg}
+          confirmLabel="Salvar mesmo assim"
+          cancelLabel="Cancelar"
+          onConfirm={_doSave}
+          onCancel={() => setConfirmDup(null)}
+        />
+      )}
     </div>
   );
 }
 
 function HistoryModal({ onClose }) {
+  useBodyScrollLock(true);
+  useEscToClose(true, onClose);
   const [history, setHistory] = useState(null);
   const [filterDate, setFilterDate] = useState('');
   const [loading, setLoading] = useState(false);
@@ -614,6 +698,8 @@ function HistoryModal({ onClose }) {
 }
 
 function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
+  useBodyScrollLock(true);
+  useEscToClose(true, onClose);
   const [formOpen, setFormOpen] = useState(false);
   const [editEntry, setEditEntry] = useState(null);
   const [filterSector, setFilterSector] = useState("all");
@@ -638,10 +724,21 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
   }
   function bumpHist() { setHistKey(k => k + 1); }
 
-  const allEntries = useMemo(() =>
-    sectors.flatMap(s => s.entries.map(e => ({ ...e, sector: s.sector, short: s.short }))),
-    [sectors]
-  );
+  const allEntries = useMemo(() => {
+    // Dedup defensiva por id: protege contra dado em que um mesmo entry
+    // aparece em mais de 1 secao (causa do contador 98 vs 99 na lista).
+    // Mantem a primeira ocorrencia; nao altera os dados originais.
+    const out = [];
+    const seen = new Set();
+    for (const s of sectors) {
+      for (const e of s.entries) {
+        if (e && e.id != null && seen.has(e.id)) continue;
+        if (e && e.id != null) seen.add(e.id);
+        out.push({ ...e, sector: s.sector, short: s.short });
+      }
+    }
+    return out;
+  }, [sectors]);
 
   const visible = useMemo(() => {
     const q = plainNorm(filterTextDebounced.trim());
@@ -684,7 +781,25 @@ function AdminPanel({ sectors, onClose, onAdd, onEdit, onToggle }) {
           <select className="adm-filter-select" value={filterSector}
             onChange={e => setFilterSector(e.target.value)}>
             <option value="all">Todos os setores</option>
-            {sectors.slice().sort((a, b) => a.sector.localeCompare(b.sector, 'pt')).map(s => <option key={s.sector} value={s.sector}>{displayName(s.sector) === s.sector ? s.short : displayName(s.sector)}</option>)}
+            {/* Dedup case-insensitive + trim: mantem 1 label canonico por setor
+                (primeiro encontrado). Casos como 'Almoxarifado de Materiais' e
+                'Almoxarifado de materiais' colapsam em uma unica opcao, mas
+                'Eventos' e 'Eventos Sociais' (textos diferentes) ficam separados. */}
+            {(() => {
+              const seen = new Map(); // key normalizada → setor canonico
+              for (const s of sectors) {
+                const key = (s.sector || '').trim().toLowerCase();
+                if (!key || seen.has(key)) continue;
+                seen.set(key, s);
+              }
+              return [...seen.values()]
+                .sort((a, b) => a.sector.localeCompare(b.sector, 'pt'))
+                .map(s => (
+                  <option key={s.sector} value={s.sector}>
+                    {displayName(s.sector) === s.sector ? s.short : displayName(s.sector)}
+                  </option>
+                ));
+            })()}
           </select>
           {/* Filtro de status: combinado com setor + texto. 'Todos' por default. */}
           <div className="adm-status-group" role="group" aria-label="Filtrar por status">

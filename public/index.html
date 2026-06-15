@@ -481,25 +481,39 @@
     background: color-mix(in srgb, #000 60%, transparent);
     display: grid; place-items: center; padding: 20px;
     animation: adm-fadein 180ms var(--ease) both;
+    overscroll-behavior: contain;
   }
+  /* Modal escala ate o viewport menos margens. Body rola internamente;
+     header e footer ficam fixos (flex 0). Resolve corte em <600px de altura. */
   .adm-modal {
     width: 100%; max-width: 460px; background: var(--bg);
     border: 1px solid var(--line-strong); border-radius: var(--r-md);
     box-shadow: 0 24px 64px color-mix(in srgb, #000 30%, transparent);
     animation: adm-modal-up 220ms var(--ease) both;
     display: flex; flex-direction: column;
+    max-height: calc(100dvh - 32px);
   }
   @keyframes adm-modal-up { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
   .adm-modal__header {
+    flex: 0 0 auto;
     display: flex; align-items: center; justify-content: space-between;
     padding: 18px 22px; border-bottom: 1px solid var(--line);
     font-family: var(--font-display); font-style: italic; font-size: 1.1rem; font-weight: 400;
   }
-  .adm-modal__body { padding: 22px; display: flex; flex-direction: column; gap: 6px; }
+  .adm-modal__body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 22px; display: flex; flex-direction: column; gap: 6px;
+  }
   .adm-modal__footer {
+    flex: 0 0 auto;
     padding: 16px 22px; border-top: 1px solid var(--line);
     display: flex; justify-content: flex-end; gap: 10px;
   }
+  /* Scroll lock global enquanto qualquer overlay esta aberto. JS controla
+     a classe via useBodyScrollLock (contador de instancias). */
+  body.modal-open { overflow: hidden; }
   .adm-label {
     font-family: var(--font-mono); font-size: 0.65rem; font-weight: 500;
     letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); margin-top: 10px;

@@ -8,7 +8,7 @@ function Logo() {
       <span className="gm-logo__words">
         <span className="gm-logo__pre">Hotel</span>
         <span className="gm-logo__name">Gran Marquise</span>
-        <span className="gm-logo__tag">Diretório de Ramais</span>
+        <span className="gm-logo__tag">Lista de Contatos</span>
       </span>
     </a>
   );

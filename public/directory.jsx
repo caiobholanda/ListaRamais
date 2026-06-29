@@ -1126,12 +1126,19 @@ function App() {
     }
   }
 
-  const publicSectors = useMemo(() =>
-    allSectors
-      .map(s => ({ ...s, entries: s.entries.filter(e => e.active !== false) }))
-      .filter(s => s.entries.length > 0),
-    [allSectors]
-  );
+  const publicSectors = useMemo(() => {
+    const cmp = (a, b) => {
+      const na = plainNorm(a.names || ''), nb = plainNorm(b.names || '');
+      if (!na && !nb) return plainNorm(a.role || '').localeCompare(plainNorm(b.role || ''), 'pt-BR');
+      if (!na) return 1;
+      if (!nb) return -1;
+      return na.localeCompare(nb, 'pt-BR');
+    };
+    return allSectors
+      .map(s => ({ ...s, entries: s.entries.filter(e => e.active !== false).slice().sort(cmp) }))
+      .filter(s => s.entries.length > 0)
+      .sort((a, b) => plainNorm(a.sector).localeCompare(plainNorm(b.sector), 'pt-BR'));
+  }, [allSectors]);
 
   const match = (e, s, q) => {
     const hay = plainNorm([e.role, e.names, e.ext, s.sector].join(" "));

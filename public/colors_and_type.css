@@ -1,25 +1,28 @@
 /* ============================================================
-   HOTEL GRAN MARQUISE — Design Tokens (Editorial identity)
+   HOTEL GRAN MARQUISE — Design Tokens
+   Cores e tipografia conforme Branding Book (Marketing)
    ============================================================ */
 
 :root {
-  --paper:        #F4EEE1;
-  --ink:          #1C2030;
-  --gold-l:       #8A6B1F;
-  --olive:        #605738;
-  --olive-soft:   #44402F;
-  --teal-l:       #15705A;
+  /* ── Paleta Oficial ── */
+  --color-terracota: #9C5843;
+  --color-deep-green: #202C28;
+  --color-sand:      #ECE4D2;
+  --color-bronze:    #996442;
 
-  --midnight:     #0A0E1A;
-  --cream:        #F5F0E6;
-  --gold-d:       #C9A961;
-  --taupe:        #8A7E64;
-  --gold-mist:    #D4C4A0;
-  --teal-d:       #3E8497;
+  /* ── Derivações funcionais ── */
+  --terracota-dark:  #7A4334;
+  --terracota-light: #B8705A;
+  --sand-dark:       #E3DACC;
+  --deep-green-mid:  #293630;
+  --status-l:        #3E6B55;
+  --status-d:        #5A9478;
 
-  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
-  --font-body:    "Fraunces", Georgia, serif;
-  --font-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* ── Tipografia Oficial ── */
+  --font-primary: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-body:    'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-display: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
   --fs-display:  clamp(2rem, 4vw, 3rem);
   --fs-h1: clamp(1.7rem, 3vw, 2.25rem);
@@ -61,40 +64,40 @@
 :root,
 [data-theme="light"] {
   color-scheme: light;
-  --bg: var(--paper);
-  --bg-tint: #EFE7D6;
-  --surface: var(--paper);
-  --surface-hover: #EFE6D4;
-  --fg: var(--ink);
-  --fg-muted: var(--olive);
-  --fg-soft: #7A715A;
-  --on-ink: var(--paper);
-  --accent: var(--gold-l);
-  --accent-hover: #6F5417;
-  --ext: var(--gold-l);
-  --status: var(--teal-l);
-  --line: rgba(28, 32, 48, 0.12);
-  --line-strong: rgba(28, 32, 48, 0.22);
-  --ring: rgba(138, 107, 31, 0.5);
+  --bg:            var(--color-sand);
+  --bg-tint:       var(--sand-dark);
+  --surface:       var(--color-sand);
+  --surface-hover: var(--sand-dark);
+  --fg:            var(--color-deep-green);
+  --fg-muted:      var(--color-bronze);
+  --fg-soft:       #7A6B5A;
+  --on-ink:        var(--color-sand);
+  --accent:        var(--color-terracota);
+  --accent-hover:  var(--terracota-dark);
+  --ext:           var(--color-terracota);
+  --status:        var(--status-l);
+  --line:          rgba(32, 44, 40, 0.12);
+  --line-strong:   rgba(32, 44, 40, 0.22);
+  --ring:          rgba(156, 88, 67, 0.5);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: var(--midnight);
-  --bg-tint: #0E1424;
-  --surface: var(--midnight);
-  --surface-hover: #121829;
-  --fg: var(--cream);
-  --fg-muted: var(--taupe);
-  --fg-soft: #9C9176;
-  --on-ink: var(--midnight);
-  --accent: var(--gold-d);
-  --accent-hover: var(--gold-mist);
-  --ext: var(--gold-d);
-  --status: var(--teal-d);
-  --line: rgba(245, 240, 230, 0.12);
-  --line-strong: rgba(245, 240, 230, 0.22);
-  --ring: rgba(201, 169, 97, 0.6);
+  --bg:            var(--color-deep-green);
+  --bg-tint:       #171E1B;
+  --surface:       var(--color-deep-green);
+  --surface-hover: var(--deep-green-mid);
+  --fg:            var(--color-sand);
+  --fg-muted:      var(--color-bronze);
+  --fg-soft:       #8A7B6A;
+  --on-ink:        var(--color-deep-green);
+  --accent:        var(--color-terracota);
+  --accent-hover:  var(--terracota-light);
+  --ext:           var(--color-bronze);
+  --status:        var(--status-d);
+  --line:          rgba(236, 228, 210, 0.12);
+  --line-strong:   rgba(236, 228, 210, 0.22);
+  --ring:          rgba(156, 88, 67, 0.55);
 }
 
 .gm-label {
@@ -106,19 +109,19 @@
   color: var(--fg-muted);
 }
 .gm-display {
-  font-family: var(--font-display); font-optical-sizing: auto;
+  font-family: var(--font-display);
   font-weight: var(--fw-light); font-size: var(--fs-display);
   line-height: var(--lh-tight); letter-spacing: var(--track-display);
   color: var(--fg);
 }
 .gm-h2 {
-  font-family: var(--font-display); font-optical-sizing: auto;
+  font-family: var(--font-display);
   font-weight: var(--fw-light); font-size: var(--fs-h2);
   line-height: var(--lh-snug); color: var(--fg);
 }
 .gm-ext {
-  font-family: var(--font-display); font-optical-sizing: auto;
-  font-style: italic; font-weight: var(--fw-reg);
+  font-family: var(--font-mono);
+  font-weight: var(--fw-med);
   font-size: var(--fs-ext); color: var(--ext);
   font-variant-numeric: tabular-nums; line-height: 1;
 }

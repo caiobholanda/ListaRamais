@@ -6,17 +6,17 @@
 <title>Acesso pelo Hub — Lista de Contatos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #F4EEE1;
-    --surface: #FFFFFF;
-    --ink: #1C2030;
-    --ink-soft: #44402F;
-    --gold: #8A6B1F;
-    --gold-hover: #6F5417;
-    --line: rgba(28,32,48,.12);
-    --muted: #7A715A;
+    --paper: #ECE4D2;
+    --surface: #F5EFE2;
+    --ink: #202C28;
+    --ink-soft: #996442;
+    --gold: #9C5843;
+    --gold-hover: #7A4334;
+    --line: rgba(32,44,40,.12);
+    --muted: #7A6B5A;
   }
   *,*::before,*::after { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
@@ -27,7 +27,7 @@
     justify-content: center;
     background: var(--paper);
     color: var(--ink);
-    font-family: 'Fraunces', Georgia, serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     padding: 2rem 1rem;
     -webkit-font-smoothing: antialiased;
   }
@@ -35,7 +35,7 @@
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 10px;
-    box-shadow: 0 30px 60px -20px rgba(28,32,48,.18), 0 2px 6px rgba(28,32,48,.04);
+    box-shadow: 0 30px 60px -20px rgba(32,44,40,.18), 0 2px 6px rgba(32,44,40,.04);
     max-width: 460px;
     width: 100%;
     padding: 3rem 2.5rem 2.5rem;
@@ -53,9 +53,8 @@
     margin: 0 auto 1.5rem;
   }
   h1 {
-    font-family: 'Fraunces', Georgia, serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-weight: 300;
-    font-style: italic;
     font-size: 1.85rem;
     margin: 0 0 .75rem;
     color: var(--ink);
@@ -67,7 +66,7 @@
     font-size: .95rem;
     line-height: 1.6;
     margin: 0 0 1.75rem;
-    font-family: 'Fraunces', Georgia, serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-weight: 400;
   }
   .badge-sistema {
@@ -77,7 +76,7 @@
     letter-spacing: .28em;
     text-transform: uppercase;
     color: var(--gold);
-    background: rgba(138,107,31,.10);
+    background: rgba(156,88,67,.10);
     padding: .35rem .9rem;
     border-radius: 999px;
     margin-bottom: 1.5rem;
@@ -95,14 +94,14 @@
     padding: .95rem 1.85rem;
     font-size: .95rem;
     font-weight: 500;
-    font-family: 'Fraunces', Georgia, serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     cursor: pointer;
     text-decoration: none;
     transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
-    box-shadow: 0 6px 14px -4px rgba(28,32,48,.32);
+    box-shadow: 0 6px 14px -4px rgba(32,44,40,.32);
     letter-spacing: .01em;
   }
-  .btn:hover { background: #283050; transform: translateY(-1px); box-shadow: 0 10px 20px -6px rgba(28,32,48,.38); }
+  .btn:hover { background: #293630; transform: translateY(-1px); box-shadow: 0 10px 20px -6px rgba(32,44,40,.38); }
   .btn:active { transform: translateY(0); }
   .hint {
     margin-top: 1.5rem;

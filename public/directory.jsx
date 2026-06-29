@@ -1127,13 +1127,7 @@ function App() {
   }
 
   const publicSectors = useMemo(() => {
-    const cmp = (a, b) => {
-      const na = plainNorm(a.names || ''), nb = plainNorm(b.names || '');
-      if (!na && !nb) return plainNorm(a.role || '').localeCompare(plainNorm(b.role || ''), 'pt-BR');
-      if (!na) return 1;
-      if (!nb) return -1;
-      return na.localeCompare(nb, 'pt-BR');
-    };
+    const cmp = (a, b) => plainNorm(a.role || '').localeCompare(plainNorm(b.role || ''), 'pt-BR');
     return allSectors
       .map(s => ({ ...s, entries: s.entries.filter(e => e.active !== false).slice().sort(cmp) }))
       .filter(s => s.entries.length > 0)

@@ -145,13 +145,7 @@ app.get('/api/directory', (_req, res) => {
   const data = loadDir();
   data.sort((a, b) => normSort(a.sector).localeCompare(normSort(b.sector)));
   data.forEach(s => {
-    s.entries.sort((a, b) => {
-      const na = normSort(a.names), nb = normSort(b.names);
-      if (!na && !nb) return normSort(a.role).localeCompare(normSort(b.role));
-      if (!na) return 1;
-      if (!nb) return -1;
-      return na.localeCompare(nb);
-    });
+    s.entries.sort((a, b) => normSort(a.role).localeCompare(normSort(b.role)));
   });
   res.json({ ok: true, sectors: data });
 });

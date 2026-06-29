@@ -3,13 +3,13 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 function Logo() {
   return (
     <a className="gm-logo" href="https://hub-granmarquise.fly.dev" target="_blank" rel="noopener noreferrer" aria-label="Abrir o Hub em nova aba" title="Abrir o Hub em nova aba" style={{ cursor: 'pointer' }}>
-      <span className="gm-logo__mono" aria-hidden="true">GM</span>
+      <img
+        src="https://letsimage.s3.amazonaws.com/editor/granmarquise/imgs/1760033174793-hotelgranmarquise_pos_footer.png"
+        alt="Gran Marquise"
+        className="gm-logo__img"
+      />
       <span className="gm-logo__rule" aria-hidden="true" />
-      <span className="gm-logo__words">
-        <span className="gm-logo__pre">Hotel</span>
-        <span className="gm-logo__name">Gran Marquise</span>
-        <span className="gm-logo__tag">Lista de Contatos</span>
-      </span>
+      <span className="gm-logo__tag">Lista de Contatos</span>
     </a>
   );
 }

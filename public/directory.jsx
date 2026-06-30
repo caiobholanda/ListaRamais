@@ -323,8 +323,10 @@ function SectorCombobox({ value, onChange, allowedSectors, onRefreshSetores }) {
   const restrito = Array.isArray(allowedSectors);
   return (
     <div className="adm-combo">
+      <svg style={{position:'absolute',left:'0.65rem',top:'50%',transform:'translateY(-50%)',color:'var(--fg-muted)',pointerEvents:'none'}} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input
         className="adm-input"
+        style={{paddingLeft:'2rem'}}
         value={query}
         placeholder="Buscar setor…"
         autoComplete="off"
@@ -804,14 +806,18 @@ function AdminPanel({ sectors, sectorsCanonical, onClose, onAdd, onEdit, onToggl
         </div>
 
         <div className="adm-toolbar">
-          <input
-            className="adm-input adm-toolbar__search"
-            type="search"
-            value={filterText}
-            onChange={e => setFilterText(e.target.value)}
-            placeholder="Filtrar por cargo, nome, ramal, e-mail…"
-            autoComplete="off"
-          />
+          <div style={{position:'relative',flex:1,minWidth:0}}>
+            <svg style={{position:'absolute',left:'0.65rem',top:'50%',transform:'translateY(-50%)',color:'var(--fg-muted)',pointerEvents:'none'}} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input
+              className="adm-input adm-toolbar__search"
+              type="search"
+              value={filterText}
+              onChange={e => setFilterText(e.target.value)}
+              placeholder="Filtrar por cargo, nome, ramal, e-mail…"
+              autoComplete="off"
+              style={{width:'100%',paddingLeft:'2rem'}}
+            />
+          </div>
           <select className="adm-filter-select" value={filterSector}
             onChange={e => setFilterSector(e.target.value)}>
             <option value="all">Todos os setores</option>

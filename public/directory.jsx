@@ -211,7 +211,7 @@ function Section({ data, query, index, editMode, isAdmin, onQuickEdit }) {
       <div className="gm-section__head">
         <span className="gm-section__idx" aria-hidden="true">{String(index).padStart(2, "0")}</span>
         <h2 className="gm-section__title" id={"sec-" + slug(data.sector)}>
-          <span className="gm-section__ic" aria-hidden="true"><SectorIcon sector={data.sector} size="18" /></span>
+          <span className="gm-section__ic" aria-hidden="true"><IconDots size="18" /></span>
           <em>{displayName(data.sector)}</em>
         </h2>
         <span className="gm-section__rule" aria-hidden="true" />

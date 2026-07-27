@@ -102,6 +102,22 @@ function requireAdmin(req, res, next) {
   }
 }
 
+// Exige apenas uma sessao valida do Hub (admin OU usuario comum). Usado nas
+// rotas de leitura do diretorio: qualquer funcionario logado pode consultar,
+// mas anonimos nao. O gate global (mais abaixo) e registrado depois das rotas
+// /api, entao nao as cobre — por isso a checagem precisa ser explicita aqui.
+function requireSessao(req, res, next) {
+  const token = req.cookies && req.cookies.hub_session;
+  if (!token) return res.status(401).json({ ok: false, erro: 'Não autenticado' });
+  try {
+    req.hubUser = jwt.verify(token, SSO_SECRET);
+    next();
+  } catch {
+    res.clearCookie('hub_session');
+    return res.status(401).json({ ok: false, erro: 'Sessão expirada' });
+  }
+}
+
 app.get('/health',  (_req, res) => res.json({ ok: true }));
 app.get('/healthz', (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
@@ -141,7 +157,7 @@ function normSort(str) {
   return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
-app.get('/api/directory', (_req, res) => {
+app.get('/api/directory', requireSessao, (_req, res) => {
   const data = loadDir();
   data.sort((a, b) => normSort(a.sector).localeCompare(normSort(b.sector)));
   data.forEach(s => {
@@ -286,7 +302,7 @@ const SETORES_URL = 'https://sistema-chamados-granmarquise.fly.dev/api/setores';
 const USUARIOS_URL = 'https://sistema-chamados-granmarquise.fly.dev/api/hub/usuarios';
 const SETORES_TTL = 30 * 1000;
 
-app.get('/api/setores', async (_req, res) => {
+app.get('/api/setores', requireSessao, async (_req, res) => {
   const now = Date.now();
   if (_setoresCache.data && now - _setoresCache.at < SETORES_TTL)
     return res.json({ ok: true, setores: _setoresCache.data, stale: false });

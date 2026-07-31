@@ -31,6 +31,31 @@ function ThemeToggle({ theme, onToggle }) {
   );
 }
 
+function AvatarHub() {
+  const [nome, setNome] = useState('');
+  const [fotoOk, setFotoOk] = useState(true);
+  useEffect(() => {
+    fetch('/api/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && d.ok) setNome(d.nome || ''); })
+      .catch(() => {});
+  }, []);
+  const iniciais = useMemo(() => {
+    const p = (nome || '').trim().split(/\s+/).filter(Boolean);
+    if (!p.length) return '';
+    const a = p[0][0] || '';
+    const b = p.length > 1 ? (p[p.length - 1][0] || '') : '';
+    return (a + b).toUpperCase();
+  }, [nome]);
+  return (
+    <span className="gm-user-avatar" title={nome || ''}>
+      {fotoOk !== false
+        ? <img src="/api/me/foto" alt="" onError={() => setFotoOk(false)} />
+        : iniciais}
+    </span>
+  );
+}
+
 function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick }) {
   function sairParaHub() {
     // Captura o tema ATUAL antes de limpar o storage para propagar ao Hub.
@@ -55,6 +80,7 @@ function Header({ theme, onToggle, scrolled, isAdmin, onAdminClick }) {
         <Logo />
         <div className="gm-header__right">
           <span className="gm-datahora" title="Horário de Fortaleza">{dataFmt} · {horaFmt}</span>
+          <AvatarHub />
           {/* Botao 'Modo edicao' removido: para admin o modo edicao agora e'
               sempre ativo (lapis sempre visivel nos cards). */}
           {isAdmin && (

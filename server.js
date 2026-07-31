@@ -8,6 +8,7 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SSO_SECRET = process.env.SSO_SECRET || 'dev-sso-secret';
+const HUB_URL = process.env.HUB_URL || 'https://hub-granmarquise.fly.dev';
 
 const ADMIN_EMAILS = [
   'christian.bernard@granmarquise.com.br',
@@ -164,6 +165,27 @@ app.get('/api/directory', requireSessao, (_req, res) => {
     s.entries.sort((a, b) => normSort(a.role).localeCompare(normSort(b.role)));
   });
   res.json({ ok: true, sectors: data });
+});
+
+app.get('/api/me', requireSessao, (req, res) => {
+  res.json({ ok: true, nome: req.hubUser.nome, email: req.hubUser.email, tipo: req.hubUser.tipo });
+});
+
+// Proxy da foto de perfil no Hub. O cookie hub_session (JWT assinado com o
+// mesmo SSO_SECRET) e aceito pelo Hub como Bearer token.
+app.get('/api/me/foto', requireSessao, async (req, res) => {
+  try {
+    const token = req.cookies.hub_session;
+    const r = await fetch(HUB_URL + '/api/foto?email=' + encodeURIComponent(req.hubUser.email || ''), {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    if (!r.ok) return res.status(404).json({ ok: false });
+    res.set('Content-Type', 'image/jpeg');
+    res.set('Cache-Control', 'private, max-age=300');
+    res.send(Buffer.from(await r.arrayBuffer()));
+  } catch {
+    res.status(404).json({ ok: false });
+  }
 });
 
 const GRUPO_SECTOR = 'Grupos de Transferência';

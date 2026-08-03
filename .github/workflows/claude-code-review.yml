@@ -26,5 +26,3 @@ jobs:
           prompt: |
             Revise este pull request. Aponte bugs, riscos de segurança e
             problemas de qualidade relevantes. Seja objetivo e conciso.
-          claude_args: |
-            --allowedTools "Read,Grep,Glob"

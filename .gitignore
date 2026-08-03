@@ -1,3 +1,6 @@
 node_modules/
 .env
 public/assets/
+
+# Dumps temporarios da API — contem dados reais, nunca versionar
+tmp/

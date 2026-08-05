@@ -20,13 +20,31 @@ const ADMIN_EMAILS = [
   'estagio.ti@granmarquise.com.br',
 ];
 
+function loadAdmins() {
+  if (!fs.existsSync(ADMINS_FILE)) return [];
+  try { return JSON.parse(fs.readFileSync(ADMINS_FILE, 'utf8')); } catch { return []; }
+}
+function saveAdmins(list) {
+  fs.writeFileSync(ADMINS_FILE, JSON.stringify(list, null, 2), 'utf8');
+}
+function initAdmins() {
+  if (fs.existsSync(ADMINS_FILE)) return;
+  const seed = ADMIN_EMAILS.map(email => ({ email, adicionadoPor: 'sistema', em: new Date().toISOString() }));
+  saveAdmins(seed);
+  console.log('[DiretorioRamais] admins.json inicializado a partir de ADMIN_EMAILS');
+}
+
 function isAdminEmail(email) {
-  return ADMIN_EMAILS.includes((email || '').trim().toLowerCase());
+  const e = (email || '').trim().toLowerCase();
+  const dynamic = loadAdmins();
+  if (dynamic.some(a => (a.email || '').toLowerCase() === e)) return true;
+  return ADMIN_EMAILS.includes(e);
 }
 
 const DATA_DIR = '/data';
 const DATA_FILE = path.join(DATA_DIR, 'directory.json');
 const HIST_FILE = path.join(DATA_DIR, 'history.json');
+const ADMINS_FILE = path.join(DATA_DIR, 'admins.json');
 
 app.use(cookieParser());
 app.use(express.json());
@@ -82,6 +100,7 @@ function migrarGrupoShort() {
   if (changed) saveDir(data);
 }
 migrarGrupoShort();
+initAdmins();
 
 function nextId(data) {
   let max = 0;
@@ -363,6 +382,31 @@ app.get('/api/usuarios', requireAdmin, async (_req, res) => {
       return res.json({ ok: true, users: _usuariosCache.data, stale: true });
     res.json({ ok: true, users: [], stale: true });
   }
+});
+
+app.get('/api/admins', requireAdmin, (_req, res) => {
+  res.json({ ok: true, admins: loadAdmins() });
+});
+
+app.post('/api/admins', requireAdmin, (req, res) => {
+  const email = ((req.body && req.body.email) || '').trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return res.status(400).json({ ok: false, erro: 'E-mail inválido' });
+  const list = loadAdmins();
+  if (list.some(a => (a.email || '').toLowerCase() === email))
+    return res.json({ ok: true, ja: true });
+  list.push({ email, adicionadoPor: req.hubUser.email || req.hubUser.nome || 'admin', em: new Date().toISOString() });
+  saveAdmins(list);
+  res.status(201).json({ ok: true });
+});
+
+app.delete('/api/admins/:email', requireAdmin, (req, res) => {
+  const email = decodeURIComponent(req.params.email).trim().toLowerCase();
+  const list = loadAdmins();
+  const novo = list.filter(a => (a.email || '').toLowerCase() !== email);
+  if (novo.length === list.length) return res.status(404).json({ ok: false, erro: 'Não encontrado' });
+  saveAdmins(novo);
+  res.json({ ok: true });
 });
 
 app.use('/api', (_req, res) => res.status(404).json({ ok: false, erro: 'Endpoint não encontrado' }));

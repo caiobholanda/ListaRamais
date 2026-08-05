@@ -733,6 +733,134 @@ function HistoryModal({ onClose }) {
   );
 }
 
+function AdminsTab() {
+  const [admins, setAdmins] = useState(null);
+  const [addEmail, setAddEmail] = useState('');
+  const [usuarios, setUsuarios] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState('');
+  const [dropOpen, setDropOpen] = useState(false);
+
+  function notify(msg) { setToast(msg); setTimeout(() => setToast(''), 2500); }
+
+  async function loadAdminsData() {
+    try {
+      const r = await fetch('/api/admins');
+      const d = await r.json();
+      if (d.ok) setAdmins(d.admins);
+    } catch { setAdmins([]); }
+  }
+
+  useEffect(() => {
+    loadAdminsData();
+    fetch('/api/usuarios').then(r => r.ok ? r.json() : null).then(d => {
+      if (d && d.ok) setUsuarios(d.users || []);
+    }).catch(() => {});
+  }, []);
+
+  const dropItems = useMemo(() => {
+    const q = addEmail.trim().toLowerCase();
+    if (!q) return [];
+    return (usuarios || []).filter(u =>
+      (u.email || '').toLowerCase().includes(q) || (u.nome || '').toLowerCase().includes(q)
+    ).slice(0, 8);
+  }, [addEmail, usuarios]);
+
+  async function handleAdd(e) {
+    if (e) e.preventDefault();
+    const email = addEmail.trim().toLowerCase();
+    if (!email) return;
+    setSaving(true);
+    try {
+      const r = await fetch('/api/admins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d.erro || `HTTP ${r.status}`);
+      setAddEmail('');
+      setDropOpen(false);
+      await loadAdminsData();
+      notify(d.ja ? 'Já é administrador.' : 'Administrador adicionado.');
+    } catch (err) {
+      notify('Erro: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemove(email) {
+    try {
+      const r = await fetch('/api/admins/' + encodeURIComponent(email), { method: 'DELETE' });
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d.erro || `HTTP ${r.status}`);
+      await loadAdminsData();
+      notify('Administrador removido.');
+    } catch (err) {
+      notify('Erro: ' + err.message);
+    }
+  }
+
+  return (
+    <div className="adm-admins-tab">
+      <form className="adm-admins-form" onSubmit={handleAdd}>
+        <div className="adm-admins-input-wrap">
+          <input
+            className="adm-input adm-admins-input"
+            type="text"
+            value={addEmail}
+            onChange={e => { setAddEmail(e.target.value); setDropOpen(true); }}
+            onFocus={() => setDropOpen(true)}
+            onBlur={() => setTimeout(() => setDropOpen(false), 160)}
+            placeholder="E-mail do novo administrador…"
+            autoComplete="off"
+          />
+          {dropOpen && dropItems.length > 0 && (
+            <div className="adm-admins-drop">
+              {dropItems.map(u => (
+                <div key={u.email} className="adm-admins-drop-item"
+                  onMouseDown={e => { e.preventDefault(); setAddEmail(u.email); setDropOpen(false); }}>
+                  <span className="adm-admins-drop-nome">{u.nome || u.email}</span>
+                  {u.nome && <span className="adm-admins-drop-email">{u.email}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button type="submit" className="adm-btn adm-btn--gold" disabled={saving || !addEmail.trim()}>
+          {saving ? '…' : 'Adicionar'}
+        </button>
+      </form>
+
+      <div className="adm-admins-list">
+        {admins === null ? (
+          <p className="adm-admins-empty">Carregando…</p>
+        ) : admins.length === 0 ? (
+          <p className="adm-admins-empty">Nenhum administrador cadastrado.</p>
+        ) : admins.map(a => (
+          <div key={a.email} className="adm-admins-item">
+            <span className="adm-admins-item-email">{a.email}</span>
+            {a.adicionadoPor && a.adicionadoPor !== 'sistema' && (
+              <span className="adm-admins-item-by">por {a.adicionadoPor}</span>
+            )}
+            <button type="button" className="adm-btn adm-btn--ghost adm-btn--sm"
+              onClick={() => handleRemove(a.email)}>
+              Remover
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <p className="adm-admins-note">
+        Lista local usada como fallback quando o Hub não informa permissões de acesso.
+      </p>
+
+      {toast && <div className="adm-toast">{toast}</div>}
+    </div>
+  );
+}
+
 function AdminPanel({ sectors, sectorsCanonical, onClose, onAdd, onEdit, onToggle, onRefreshSetores }) {
   useBodyScrollLock(true);
   useEscToClose(true, onClose);
@@ -753,6 +881,7 @@ function AdminPanel({ sectors, sectorsCanonical, onClose, onAdd, onEdit, onToggl
   const [showHist, setShowHist] = useState(false);
   const [histKey, setHistKey] = useState(0);
   const [toast, setToast] = useState('');
+  const [activeTab, setActiveTab] = useState('ramais');
 
   function notify(msg) {
     setToast(msg);
@@ -797,14 +926,25 @@ function AdminPanel({ sectors, sectorsCanonical, onClose, onAdd, onEdit, onToggl
         <div className="adm-panel__header">
           <button className="adm-close-sm" onClick={onClose} aria-label="Fechar"><IconClose size="18" /></button>
           <span className="adm-title">Gerenciar Diretório</span>
-          <button className="adm-hist-btn" onClick={() => setShowHist(true)}>
-            <IconHistory size="13" sw="1.8" /> Histórico
-          </button>
-          <button className="adm-add-btn" onClick={() => { setEditEntry(null); setFormOpen(true); }}>
-            <IconPlus size="14" sw="2.2" /> Adicionar
-          </button>
+          {activeTab === 'ramais' && <>
+            <button className="adm-hist-btn" onClick={() => setShowHist(true)}>
+              <IconHistory size="13" sw="1.8" /> Histórico
+            </button>
+            <button className="adm-add-btn" onClick={() => { setEditEntry(null); setFormOpen(true); }}>
+              <IconPlus size="14" sw="2.2" /> Adicionar
+            </button>
+          </>}
         </div>
 
+        <div className="adm-tabs-bar">
+          <button className={"adm-tab" + (activeTab === 'ramais' ? ' is-active' : '')}
+            onClick={() => setActiveTab('ramais')}>Ramais</button>
+          <button className={"adm-tab" + (activeTab === 'admins' ? ' is-active' : '')}
+            onClick={() => setActiveTab('admins')}>Administradores</button>
+        </div>
+
+        {activeTab === 'admins' && <AdminsTab />}
+        {activeTab === 'ramais' && <>
         <div className="adm-toolbar">
           <div style={{position:'relative',flex:1,minWidth:0}}>
             <svg style={{position:'absolute',left:'0.65rem',top:'50%',transform:'translateY(-50%)',color:'var(--fg-muted)',pointerEvents:'none'}} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -901,6 +1041,7 @@ function AdminPanel({ sectors, sectorsCanonical, onClose, onAdd, onEdit, onToggl
             </div>
           ))}
         </div>
+        </>}
       </div>
 
       {formOpen && (

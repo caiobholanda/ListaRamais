@@ -147,18 +147,13 @@ app.get('/sso', (req, res) => {
   if (!sso_token) return res.redirect(destWithTheme);
   try {
     const payload = jwt.verify(sso_token, SSO_SECRET);
-    // Fonte de verdade do papel admin neste site: o array sites_admin que o
-    // Hub embute no JWT (vindo do banco gerenciado pelo painel admin).
-    // Fallback para a allowlist local apenas quando o token vier de uma
-    // versao antiga do Hub sem o campo sites_admin — garante zero perda
-    // de acesso na transicao. Apos validacao em prod, a allowlist sera
-    // removida.
-    let tipo;
-    if (Array.isArray(payload.sites_admin)) {
-      tipo = payload.sites_admin.includes('ramais') ? 'admin' : 'usuario';
-    } else {
-      tipo = isAdminEmail(payload.email) ? 'admin' : 'usuario';
-    }
+    // Duas fontes de admin, em OR: a aba Liberacao do Hub (sites_admin no JWT)
+    // E a lista local (aba Administradores / admins.json + ADMIN_EMAILS).
+    // Antes o sites_admin, quando presente, VENCIA a lista local — quem era
+    // adicionado pela aba Administradores daqui nao virava admin em token novo,
+    // e um sites_admin=[] (fail-closed do Hub) derrubava ate a allowlist.
+    const hubAdmin = Array.isArray(payload.sites_admin) && payload.sites_admin.includes('ramais');
+    const tipo = (hubAdmin || isAdminEmail(payload.email)) ? 'admin' : 'usuario';
     const session = jwt.sign(
       { nome: payload.nome, email: payload.email, tipo },
       SSO_SECRET,

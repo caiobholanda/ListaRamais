@@ -20,25 +20,43 @@ const ADMIN_EMAILS = [
   'estagio.ti@granmarquise.com.br',
 ];
 
+// null = lista indisponivel (arquivo ausente ou ilegivel) — diferente de []
+// (lista existente e vazia). isAdminEmail depende dessa distincao para nao
+// confundir "removido de proposito" com "volume novo/corrompido".
 function loadAdmins() {
-  if (!fs.existsSync(ADMINS_FILE)) return [];
-  try { return JSON.parse(fs.readFileSync(ADMINS_FILE, 'utf8')); } catch { return []; }
+  if (!fs.existsSync(ADMINS_FILE)) return null;
+  try { return JSON.parse(fs.readFileSync(ADMINS_FILE, 'utf8')); } catch { return null; }
 }
 function saveAdmins(list) {
   fs.writeFileSync(ADMINS_FILE, JSON.stringify(list, null, 2), 'utf8');
 }
+function semente() {
+  return ADMIN_EMAILS.map(email => ({ email, adicionadoPor: 'sistema', em: new Date().toISOString() }));
+}
 function initAdmins() {
   if (fs.existsSync(ADMINS_FILE)) return;
-  const seed = ADMIN_EMAILS.map(email => ({ email, adicionadoPor: 'sistema', em: new Date().toISOString() }));
-  saveAdmins(seed);
+  saveAdmins(semente());
   console.log('[DiretorioRamais] admins.json inicializado a partir de ADMIN_EMAILS');
 }
+// Para o CRUD: nunca devolve null. Se a lista sumiu (volume novo/arquivo
+// corrompido), parte da semente em vez de [] — gravar [] apagaria a lista de
+// admins de vez e ainda desligaria a trava anti-lockout de isAdminEmail.
+function loadAdminsCrud() {
+  const l = loadAdmins();
+  return l === null ? semente() : l;
+}
 
+// Lista LOCAL de admins (aba Administradores). Quando admins.json existe, ele e
+// a autoridade: quem foi removido de la deixa de ser admin. ADMIN_EMAILS e
+// apenas a semente (initAdmins) + trava anti-lockout para o caso de o arquivo
+// nao existir/estar corrompido — antes ele era consultado SEMPRE, o que tornava
+// esses 7 enderecos admin permanente, imunes tanto ao DELETE /api/admins quanto
+// a remocao pela aba Liberacao do Hub.
 function isAdminEmail(email) {
   const e = (email || '').trim().toLowerCase();
   const dynamic = loadAdmins();
-  if (dynamic.some(a => (a.email || '').toLowerCase() === e)) return true;
-  return ADMIN_EMAILS.includes(e);
+  if (dynamic === null) return ADMIN_EMAILS.includes(e); // bootstrap / arquivo ilegivel
+  return dynamic.some(a => (a.email || '').toLowerCase() === e);
 }
 
 const DATA_DIR = '/data';
@@ -380,14 +398,14 @@ app.get('/api/usuarios', requireAdmin, async (_req, res) => {
 });
 
 app.get('/api/admins', requireAdmin, (_req, res) => {
-  res.json({ ok: true, admins: loadAdmins() });
+  res.json({ ok: true, admins: loadAdminsCrud() });
 });
 
 app.post('/api/admins', requireAdmin, (req, res) => {
   const email = ((req.body && req.body.email) || '').trim().toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     return res.status(400).json({ ok: false, erro: 'E-mail inválido' });
-  const list = loadAdmins();
+  const list = loadAdminsCrud();
   if (list.some(a => (a.email || '').toLowerCase() === email))
     return res.json({ ok: true, ja: true });
   list.push({ email, adicionadoPor: req.hubUser.email || req.hubUser.nome || 'admin', em: new Date().toISOString() });
@@ -397,7 +415,7 @@ app.post('/api/admins', requireAdmin, (req, res) => {
 
 app.delete('/api/admins/:email', requireAdmin, (req, res) => {
   const email = decodeURIComponent(req.params.email).trim().toLowerCase();
-  const list = loadAdmins();
+  const list = loadAdminsCrud();
   const novo = list.filter(a => (a.email || '').toLowerCase() !== email);
   if (novo.length === list.length) return res.status(404).json({ ok: false, erro: 'Não encontrado' });
   saveAdmins(novo);
